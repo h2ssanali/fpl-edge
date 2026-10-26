@@ -3,12 +3,13 @@ import { useI18n } from '../i18n';
 import { BrandMark } from './icons';
 
 /**
- * Invite-code gate. The owner lists codes in a GitHub secret; the build publishes only
- * salted hashes (public/access.json). A visitor's code is checked on every visit, so
+ * Invite-code gate. Codes live only with the people who hold them; the repo stores salted
+ * hashes (access/codes.json, plus an optional GitHub secret) and the build publishes them in
+ * public/access.json. A visitor's code is checked on every visit, so
  * removing a code from the secret locks that person out after the next deploy.
  * This keeps casual visitors out; it is not bank-grade security.
  */
-interface AccessFile { enabled: boolean; salt?: string; codes?: { h: string; n: string }[] }
+interface AccessFile { enabled: boolean; codes?: { s: string; h: string; n: string }[] }
 
 const KEY = 'arkilo-access';
 const lsGet = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
@@ -22,16 +23,17 @@ const hex = (b: Uint8Array) => [...b].map((x) => x.toString(16).padStart(2, '0')
 
 /** Returns the person's name ('' if none) when the code is valid, otherwise null. */
 async function check(file: AccessFile, code: string): Promise<string | null> {
-  if (!file.salt || !file.codes) return null;
+  if (!file.codes) return null;
   const c = normalize(code);
-  const h = hex(await sha(`${file.salt}:${c}`));
-  const hit = file.codes.find((x) => x.h === h);
-  if (!hit) return null;
-  try {
-    const enc = Uint8Array.from(atob(hit.n), (ch) => ch.charCodeAt(0));
-    const key = await sha(`name:${file.salt}:${c}`);
-    return new TextDecoder().decode(enc.map((b, i) => b ^ key[i]));
-  } catch { return ''; }
+  for (const entry of file.codes) {
+    if (hex(await sha(`${entry.s}:${c}`)) !== entry.h) continue;
+    try {
+      const enc = Uint8Array.from(atob(entry.n), (ch) => ch.charCodeAt(0));
+      const key = await sha(`name:${entry.s}:${c}`);
+      return new TextDecoder().decode(enc.map((b, i) => b ^ key[i]));
+    } catch { return ''; }
+  }
+  return null;
 }
 
 export function AccessGate({ children }: { children: ReactNode }) {

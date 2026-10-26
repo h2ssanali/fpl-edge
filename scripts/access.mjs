@@ -1,33 +1,21 @@
-// Builds public/access.json from the ACCESS_CODES secret (GitHub → Settings → Secrets).
-// Format: one person per line, "Name: CODE" (a plain "CODE" also works).
-// Only salted SHA-256 hashes are published; names are encrypted with each person's own code.
-// No secret → no file content → the site stays open to everyone.
-import crypto from 'node:crypto';
+// Builds public/access.json (what the site checks) from:
+//  1) access/codes.json — hashed invite codes managed with scripts/invite.mjs, and
+//  2) the optional ACCESS_CODES GitHub secret ("Name: CODE" per line).
+// No codes at all → the site stays open to everyone.
 import fs from 'node:fs';
 import path from 'node:path';
+import { entryFor } from './invite.mjs';
 
-const OUT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'public', 'access.json');
-export const normalize = (code) => code.toUpperCase().replace(/\s+/g, '');
-const sha = (s) => crypto.createHash('sha256').update(s, 'utf8').digest();
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const normalize = (code) => code.toUpperCase().replace(/\s+/g, '');
 
-const raw = process.env.ACCESS_CODES || '';
-const people = raw.split(/[\n,;]+/).map((l) => l.trim()).filter(Boolean).map((line) => {
+let committed = [];
+try { committed = JSON.parse(fs.readFileSync(path.join(ROOT, 'access', 'codes.json'), 'utf8')).codes ?? []; } catch { /* none */ }
+const fromSecret = (process.env.ACCESS_CODES || '').split(/[\n,;]+/).map((l) => l.trim()).filter(Boolean).map((line) => {
   const i = line.lastIndexOf(':');
   return i >= 0 ? { name: line.slice(0, i).trim(), code: normalize(line.slice(i + 1)) } : { name: '', code: normalize(line) };
-}).filter((p) => p.code.length >= 4);
+}).filter((p) => p.code.length >= 4).map((p) => entryFor(p.name, p.code));
 
-if (!people.length) {
-  fs.writeFileSync(OUT, JSON.stringify({ enabled: false }));
-  console.log('access: open to everyone (no ACCESS_CODES secret)');
-} else {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const codes = people.map(({ name, code }) => {
-    const nameBytes = Buffer.from(name.slice(0, 40), 'utf8');
-    const key = sha(`name:${salt}:${code}`);
-    const enc = Buffer.alloc(Math.min(nameBytes.length, 32));
-    for (let i = 0; i < enc.length; i++) enc[i] = nameBytes[i] ^ key[i];
-    return { h: sha(`${salt}:${code}`).toString('hex'), n: enc.toString('base64') };
-  });
-  fs.writeFileSync(OUT, JSON.stringify({ enabled: true, salt, codes }));
-  console.log(`access: ${codes.length} invite code(s)`);
-}
+const codes = [...committed, ...fromSecret].map(({ s, h, n }) => ({ s, h, n }));
+fs.writeFileSync(path.join(ROOT, 'public', 'access.json'), JSON.stringify(codes.length ? { enabled: true, codes } : { enabled: false }));
+console.log(codes.length ? `access: ${codes.length} invite code(s)` : 'access: open to everyone');
