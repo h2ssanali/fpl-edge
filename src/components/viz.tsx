@@ -86,8 +86,8 @@ export function Gauge({ value, label, color = 'var(--accent)', display }: { valu
       </svg>
       <div className="g-val">
         <div className="mid-num">{display ?? <CountUp value={v * 100} suffix="%" />}</div>
-        {label && <div className="tiny muted">{label}</div>}
       </div>
+      {label && <div className="tiny muted g-label">{label}</div>}
     </div>
   );
 }

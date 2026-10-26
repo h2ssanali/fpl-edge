@@ -315,7 +315,8 @@ table.data tr.me td { background: var(--accent-soft); }
 /* ---------- gauge ---------- */
 .gauge { position: relative; width: 100%; max-width: 180px; margin: 0 auto; }
 .gauge svg { width: 100%; height: auto; display: block; }
-.gauge .g-val { position: absolute; left: 0; right: 0; bottom: 4px; text-align: center; }
+.gauge .g-val { position: absolute; left: 0; right: 0; top: 52%; text-align: center; }
+.gauge .g-label { text-align: center; margin-top: 2px; }
 .gauge path.arc { transition: stroke-dashoffset 1.2s cubic-bezier(.2,.8,.2,1); }
 
 /* ---------- fixture ticker ---------- */
