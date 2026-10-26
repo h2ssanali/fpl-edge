@@ -4,6 +4,7 @@ import { Countdown, Empty, MiniShirt, PName, Reasons } from '../components/ui';
 import { CountUp, DistChart, Gauge } from '../components/viz';
 import { IconArrowDown, IconArrowUp, IconClock, IconPhone } from '../components/icons';
 import { RankCard } from '../components/MyRank';
+import { WhatIf } from '../components/WhatIf';
 
 export function Home() {
   const { t, fmt, pct } = useI18n();
@@ -33,10 +34,11 @@ export function Home() {
       </section>
 
       <RankCard />
+      <WhatIf />
 
       <div className="grid-2">
         <a href="#/captain" className="card accent" style={{ textDecoration: 'none', color: 'inherit' }}>
-          <div className="card-label">{t('home.captain')}</div>
+          <div className="card-label">{t('home.captainGw', { gw: a.gw })}</div>
           {cap ? (
             <>
               <div className="row" style={{ marginTop: 8 }}>
@@ -63,7 +65,7 @@ export function Home() {
       </div>
 
       <a href="#/transfers" className="card" style={{ textDecoration: 'none', color: 'inherit' }}>
-        <div className="card-head"><span className="card-label">{t('home.transfer')}</span><span className="card-link">{t('home.seeAll')}</span></div>
+        <div className="card-head"><span className="card-label">{t('home.transferGw', { gw: a.gw })}</span><span className="card-link">{t('home.seeAll')}</span></div>
         {!phase2 ? <div className="skeleton" style={{ height: 48 }} /> : topPlan && topPlan.net > 1 ? (
           <div className="row between wrap">
             <div className="stack" style={{ gap: 6 }}>
@@ -76,7 +78,7 @@ export function Home() {
             </div>
             <div style={{ textAlign: 'end' }}>
               <div className="mid-num good">+<CountUp value={topPlan.net} decimals={1} /></div>
-              <div className="tiny muted">{t('tr.horizon')} 6 {t('gw')}</div>
+              <div className="tiny muted">{t('home.over6', { from: a.horizon[0], to: a.horizon[Math.min(5, a.horizon.length - 1)] })}</div>
             </div>
           </div>
         ) : <div className="muted small">{t('home.noTransfer')}</div>}
@@ -85,12 +87,12 @@ export function Home() {
 
       <div className="grid-2">
         <a href="#/more/chaos" className="card" style={{ textDecoration: 'none', color: 'inherit' }}>
-          <div className="card-label">{t('home.chaos')}</div>
+          <div className="card-label">{t('home.chaosGw', { gw: a.gw })}</div>
           {chaos && <Gauge value={chaos.index / 100} display={String(chaos.index)} label={t(`cx.${chaos.label}`)} color={chaos.index >= 65 ? 'var(--bad)' : chaos.index < 35 ? 'var(--good)' : 'var(--warn)'} />}
           {chaos && <div className="tiny muted" style={{ textAlign: 'center' }}>{t(`cx.${chaos.advice}`)}</div>}
         </a>
         <div className="card">
-          <div className="card-label">{t('home.squad')}</div>
+          <div className="card-label">{t('home.squadGw', { gw: a.gw })}</div>
           {me ? (
             <>
               <div className="row" style={{ alignItems: 'baseline', gap: 6, marginTop: 6 }}>
@@ -121,6 +123,10 @@ export function Home() {
         <a href="#/more/deadline" className="btn"><IconClock /> {t('home.deadlineMode')}</a>
         <a href="#/more/story" className="btn primary"><IconPhone /> {t('home.story')}</a>
       </div>
+      <a href="#/more/method" className="card" style={{ textDecoration: 'none', color: 'inherit' }}>
+        <div className="display" style={{ fontSize: '1.05rem' }}>{t('method.cta')}</div>
+        <div className="small muted">{t('method.ctaSub')}</div>
+      </a>
     </div>
   );
 }

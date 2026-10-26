@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useI18n } from '../i18n';
 import { useStore } from '../store';
-import { PageHeader, Seg, usePlayer } from '../components/ui';
+import { MiniShirt, Money, PageHeader, PName, Seg, usePlayer } from '../components/ui';
 import { fdrColor, fdrText } from '../components/viz';
 import type { FixtureCell } from '../engine/analyze';
 
@@ -12,6 +12,7 @@ export function Fixtures() {
   const { analysis: a, raw } = useStore();
   const pl = usePlayer();
   const [sort, setSort] = useState<Sort>('fpl');
+  const [pickMode, setPickMode] = useState<'att' | 'def'>('att');
   if (!a || !raw) return null;
   const gws = a.horizon.slice(0, 8);
   const val = (f: FixtureCell) => (sort === 'att' ? f.att : sort === 'def' ? f.def : f.fdr);
@@ -57,6 +58,50 @@ export function Fixtures() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <h2 className="section-title">{t('fx.picksTitle', { from: gws[0], to: gws[Math.min(5, gws.length - 1)] })}</h2>
+      <p className="small muted" style={{ marginTop: -4 }}>{t('fx.picksSub')}</p>
+      <Seg full value={pickMode} onChange={setPickMode} options={[{ value: 'att', label: t('fx.pickAtt') }, { value: 'def', label: t('fx.pickDef') }]} />
+      <div className="stack" style={{ marginTop: 10 }}>
+        {[...raw.core.teams]
+          .sort((x, y) => {
+            // Rank clubs by how kind the next 6 fixtures are for this kind of player.
+            const run = (id: number) => (a.grid[id] ?? []).slice(0, 6).reduce((s, fx) => s + (fx.length ? fx.reduce((q, f) => q + (pickMode === 'att' ? f.att : f.def), 0) / fx.length - (fx.length - 1) * 2 : 5.5), 0);
+            return run(x.id) - run(y.id);
+          })
+          .slice(0, 8)
+          .map((tm) => {
+            const xp6 = (id: number) => (a.players[id]?.xp ?? []).slice(0, 6).reduce((s, v) => s + v, 0);
+            const picks = raw.core.players
+              .filter((p) => p.team === tm.id && (pickMode === 'att' ? p.pos >= 3 : p.pos <= 2) && (a.players[p.id]?.pStart ?? 0) > 0.5)
+              .sort((x, y) => xp6(y.id) - xp6(x.id))
+              .slice(0, 3);
+            const run = (a.grid[tm.id] ?? []).slice(0, 4).map((fx) => fx.map((f) => `${pl.teamShort(f.opp)}${f.home ? '(H)' : '(A)'}`).join('+') || '—').join(' · ');
+            return (
+              <div key={tm.id} className="card" style={{ padding: '10px 14px' }}>
+                <div className="row between">
+                  <b className="num" style={{ fontSize: '1.1rem' }}>{tm.name}</b>
+                  <span className="tiny muted num" dir="ltr">{run}</span>
+                </div>
+                <div className="list">
+                  {picks.map((p) => (
+                    <div key={p.id} className="list-row" style={{ padding: '6px 0' }}>
+                      <MiniShirt id={p.id} />
+                      <div className="grow" style={{ minWidth: 0 }}>
+                        <div className="name"><PName id={p.id} /></div>
+                        <div className="sub">{['', 'GKP', 'DEF', 'MID', 'FWD'][p.pos]} · <Money v={p.cost} /> · {t('fx.owned', { p: p.sel.toFixed(1) })}</div>
+                      </div>
+                      <div style={{ textAlign: 'end' }}>
+                        <div className="num" style={{ fontWeight: 700 }}>{xp6(p.id).toFixed(1)}</div>
+                        <div className="tiny muted">{t('fx.pts6')}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useI18n } from '../i18n';
 import { PageHeader } from '../components/ui';
-import { IconBook, IconCalendar, IconChip, IconClock, IconCross, IconDiamond, IconGear, IconPhone, IconReport, IconRewind, IconStar, IconStorm, IconTag } from '../components/icons';
+import { IconAlert, IconBook, IconCalendar, IconChip, IconClock, IconCross, IconDiamond, IconGear, IconPhone, IconReport, IconRewind, IconStar, IconStorm, IconTag } from '../components/icons';
 
 const ITEMS = [
   { id: 'hindsight', icon: IconRewind, isNew: true },
@@ -15,6 +15,7 @@ const ITEMS = [
   { id: 'dream', icon: IconStar },
   { id: 'injuries', icon: IconCross },
   { id: 'report', icon: IconReport },
+  { id: 'method', icon: IconAlert },
   { id: 'settings', icon: IconGear },
 ];
 

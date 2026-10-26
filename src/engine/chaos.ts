@@ -16,18 +16,26 @@ import { clamp } from './math';
 export interface ChaosResult {
   gw: number; index: number; label: 'calm' | 'normal' | 'wild';
   balance: number; fragility: number; captainRisk: number; irregular: number;
+  /** Plain-language facts behind the number. */
+  balancedFixtures: number; fixtures: number; captainId: number | null; blanks: number; doubles: number;
+  upsets: { h: number; a: number; pH: number; pD: number; pA: number }[]; // most upset-prone matches
   advice: 'safe' | 'neutral' | 'gamble';
 }
 
 export function chaosIndex(ctx: ModelContext, gw: number, proj: Map<number, PlayerProjection>, data: ModelData): ChaosResult {
   const fixtures = data.fixturesByGw.get(gw) ?? [];
   // 1) Balance: mean of (1 - |P(home) - P(away)|)
-  let bal = 0;
+  let bal = 0, balancedFixtures = 0;
+  const odds: ChaosResult['upsets'] = [];
   for (const f of fixtures) {
     const l = fixtureLambdas(ctx.teams, f.h, f.a);
     const o = matchOdds(l.home, l.away);
     bal += 1 - Math.abs(o.home - o.away);
+    if (Math.abs(o.home - o.away) < 0.15) balancedFixtures++;
+    odds.push({ h: f.h, a: f.a, pH: o.home, pD: o.draw, pA: o.away });
   }
+  // Upset-prone: the underdog still has a real chance.
+  const upsets = odds.sort((x, y) => Math.min(y.pH, y.pA) - Math.min(x.pH, x.pA)).slice(0, 3);
   const balance = fixtures.length ? bal / fixtures.length : 0.5;
 
   // 2) Template fragility: top-owned XI, CV of points from a Poisson-ish proxy.
@@ -60,6 +68,7 @@ export function chaosIndex(ctx: ModelContext, gw: number, proj: Map<number, Play
   return {
     gw, index, label: index < 35 ? 'calm' : index < 65 ? 'normal' : 'wild',
     balance, fragility, captainRisk, irregular,
+    balancedFixtures, fixtures: fixtures.length, captainId: capId ?? null, blanks, doubles, upsets,
     advice: index < 35 ? 'safe' : index < 65 ? 'neutral' : 'gamble',
   };
 }

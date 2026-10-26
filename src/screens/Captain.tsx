@@ -27,15 +27,32 @@ export function Captain() {
   const me = a?.me;
   if (!a || !me) return <><PageHeader title={t('cap.title')} /><Empty>{t('tr.noSquad')}</Empty></>;
   const options = [...me.captains].sort((x, y) => score(y, mode) - score(x, mode));
-  const top = options[0];
   return (
     <div>
       <PageHeader title={t('cap.title')} sub={t('cap.sub')} />
       <Seg full value={mode} onChange={setMode} options={[{ value: 'safe', label: t('cap.safe') }, { value: 'upside', label: t('cap.upside') }]} />
       <div className={`card ${mode === 'upside' ? 'accent' : ''}`} style={{ margin: '10px 0 14px', padding: 12 }} key={`hint-${mode}`}>
         <div className="small">{mode === 'safe' ? t('cap.safeExplain') : t('cap.upsideExplain')}</div>
-        {top && <div className="small" style={{ marginTop: 6 }}><b>{t('cap.verdict', { name: pl.name(top.id) })}</b></div>}
       </div>
+      <section className="card accent glass" style={{ marginBottom: 14 }}>
+        <div className="display" style={{ fontSize: '1.1rem' }}>{t('cap.whyTitle', { gw: a.gw })}</div>
+        <ol style={{ margin: '8px 0 0', paddingInlineStart: 20 }}>
+          {options.slice(0, 3).map((c, i) => {
+            const ps = a.players[c.id];
+            const fxTxt = (ps?.fx ?? []).map((f) => `${pl.teamShort(f.opp)} (${t(f.home ? 'H' : 'A')})`).join(' + ') || t('r.blank');
+            const others = Math.min(100, (c.leagueEo || c.topEo * 2) / 2);
+            const next = options[i + 1];
+            return (
+              <li key={c.id} style={{ marginBottom: 8, lineHeight: 1.7 }}>
+                <b><PName id={c.id} /></b>{' — '}
+                {t('cap.whyLine', { pts: fmt(c.capDist.mean), goal: pct(c.dist.pGoal), fx: fxTxt, start: pct(ps?.pStart ?? 0) })}
+                {mode === 'upside' && <> {t('cap.whyOthers', { p: fmt(others, 0) })}</>}
+                {i === 0 && next && <div className="small muted">{t(mode === 'safe' ? 'cap.whyBeatSafe' : 'cap.whyBeatUp', { name: pl.name(next.id), diff: fmt(c.capDist.mean - next.capDist.mean), p10: fmt(c.capDist.p10, 0), p10b: fmt(next.capDist.p10, 0) })}</div>}
+              </li>
+            );
+          })}
+        </ol>
+      </section>
       <div className="stack" key={mode}>
         {options.map((c, i) => {
           const ps = a.players[c.id];

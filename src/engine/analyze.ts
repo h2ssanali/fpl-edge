@@ -12,6 +12,7 @@ import { chaosIndex, type ChaosResult } from './chaos';
 import { runBacktest, type BacktestResult } from './backtest';
 import { decisionJournal, differentials, gameweekReport, priceSignals, type Differential, type GwReport, type JournalEntry, type PriceSignal } from './insights';
 import { modelFdr } from './teams';
+import { normCdf, normInv } from './math';
 import type { Core, Distribution, Fixture, LeagueFile, LiveFile, ManagerFile, Meta, PerGwHistory, Pos, Reason, Snapshot, TopSample } from './types';
 
 export interface RawData {
@@ -59,6 +60,8 @@ export interface Analysis {
     squadDist: Distribution; lastLineupDist: Distribution | null;
     captains: CaptainOption[];
     benchAutoSub: { id: number; p: number }[];
+    /** Estimated overall-rank what-ifs (from global ownership, not every manager's team). */
+    worldSwings: Record<number, WorldSwing>;
     history: ManagerFile['history'];
   };
   league: null | {
@@ -70,6 +73,8 @@ export interface Analysis {
   };
   phase2?: Phase2;
 }
+
+export interface WorldSwing { blankPts: number; haulPts: number; blankRank: number; haulRank: number; baseRank: number; eo: number; mine: number }
 
 export interface Phase2 {
   plans: Plan[][]; base: number; hit: ReturnType<typeof hitValue>;
@@ -223,6 +228,7 @@ export class Analyzer {
         edge: { xi: xiIds, bench: benchOrdered, captain, vice },
         squadDist, lastLineupDist, captains: capOptions,
         benchAutoSub: this.autoSubOdds(xiIds, benchOrdered),
+        worldSwings: this.worldSwings(new Map([...xiIds.map((id) => [id, id === captain ? 2 : 1] as [number, number]), ...benchOrdered.map((id) => [id, 0] as [number, number])]), squadDist.mean, dists),
         history: this.me.history,
       };
     }
@@ -324,6 +330,50 @@ export class Analyzer {
     const rh = this.ctx.teams.ratings.get(h), ra = this.ctx.teams.ratings.get(a);
     const hs = Math.sqrt(this.ctx.teams.homeAdv);
     return { home: mu * (rh?.attack ?? 1) * (ra?.defence ?? 1) * hs, away: mu * (ra?.attack ?? 1) * (rh?.defence ?? 1) / hs };
+  }
+
+  /**
+   * Overall-rank what-if. We can't see 11 million squads, so the field is modelled from
+   * global ownership: the average manager gains (ownership + captaincy share) × player points.
+   * Your rank comes from a Normal model of all totals, calibrated on your current rank.
+   */
+  worldSwings(myMult: Map<number, number>, myMean: number, dists: Record<number, Distribution>): Record<number, WorldSwing> {
+    const me = this.me!;
+    const core = this.raw.core;
+    const N = Math.max(1000, core.totalPlayers);
+    const gw = Math.max(...me.history.map((h) => h.gw), 1);
+    const total = me.entry.total || me.history.at(-1)?.total || 0;
+    const rank = me.entry.overallRank || me.history.at(-1)?.rank || N / 2;
+    const played = core.events.filter((e) => e.id <= gw && e.avg > 0);
+    const fieldMean = played.reduce((s, e) => s + e.avg, 0);
+    const z = normInv(1 - Math.min(0.999999, Math.max(1e-7, rank / N)));
+    let sd = Math.abs(z) > 0.15 ? (total - fieldMean) / z : 0;
+    if (!(sd > 5)) sd = 9 * Math.sqrt(gw) + 10;
+    const recent = played.slice(-5);
+    const fieldGw = recent.length ? recent.reduce((s, e) => s + e.avg, 0) / recent.length : 50;
+    const lastCap = core.events.find((e) => e.id === gw)?.mostCaptained;
+    const rankOf = (mine: number, field: number) => Math.max(1, Math.round(N * (1 - normCdf((total + mine - fieldMean - field) / sd))));
+    const ids = new Set<number>([...myMult.keys(), ...[...core.players].sort((a, b) => b.sel - a.sel).slice(0, 12).map((p) => p.id)]);
+    const out: Record<number, WorldSwing> = {};
+    for (const id of ids) {
+      const p = this.data.players.get(id);
+      const d = dists[id];
+      if (!p || !d) continue;
+      const capShare = this.raw.top?.cap[id] != null ? (this.raw.top.cap[id] / 100) * 0.7 : id === lastCap ? 0.35 : 0;
+      const eo = p.sel / 100 * 0.95 + capShare;
+      const mult = myMult.get(id) ?? 0;
+      const myBase = myMean - mult * d.mean;
+      const fieldBase = fieldGw - eo * d.mean;
+      const blankPts = Math.min(2, Math.round(d.p10));
+      const haulPts = Math.max(10, Math.round(d.p90));
+      out[id] = {
+        blankPts, haulPts, eo, mine: mult,
+        blankRank: rankOf(myBase + mult * blankPts, fieldBase + eo * blankPts),
+        haulRank: rankOf(myBase + mult * haulPts, fieldBase + eo * haulPts),
+        baseRank: rankOf(myMean, fieldGw),
+      };
+    }
+    return out;
   }
 
   /** P(each bench player comes on) under FPL auto-sub order, from the simulations. */

@@ -3,6 +3,7 @@ import { useI18n, safeGet, safeSet } from '../i18n';
 import { useStore } from '../store';
 import { Empty, MiniShirt, Money, PageHeader, PName, Reasons, Seg, usePlayer } from '../components/ui';
 import { Pitch } from '../components/Pitch';
+import { TransferReport } from '../components/TransferReport';
 import { CountUp } from '../components/viz';
 import { IconArrowDown, IconArrowUp } from '../components/icons';
 import { runPlan, type PlannedTransfer, type PlanChip } from '../engine/planner';
@@ -151,8 +152,9 @@ export function Transfers() {
   return (
     <div>
       <PageHeader title={t('tr.title')} />
+      <TransferReport />
 
-      <section className="card accent glass" style={{ marginBottom: 14 }}>
+      <section className="card" style={{ marginBottom: 14 }}>
         <div className="display" style={{ fontSize: '1.15rem' }}>{t('tr.bestTitle')}</div>
         <p className="small muted" style={{ margin: '4px 0 8px' }}>{t('tr.bestSub', { ft: me.ft, bank: (me.bank / 10).toFixed(1) })}</p>
         {!phase2 ? <div className="skeleton" style={{ height: 70 }} /> : suggestions.length === 0 ? <div className="small">{t('home.noTransfer')}</div> : (

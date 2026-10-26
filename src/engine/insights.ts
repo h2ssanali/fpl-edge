@@ -12,6 +12,10 @@ export interface JournalEntry {
   gw: number;
   chip: string | null;
   captain: number; bestCaptain: number;
+  capXp: number; bestCapXp: number; // expected points (single) of your captain vs the model's best at the time
+  capActual: number; bestCapActual: number; // what they actually scored (single)
+  lineupLoss: number; // expected points lost to bench/lineup choices (excluding captain)
+  transferEV: number; // expected value of the week's transfers minus hits
   transfers: { in: number; out: number; xGain: number; actualGain: number }[];
   hitCost: number;
   expected: number; // xPts of the XI you actually fielded (with captain, minus hits)
@@ -55,10 +59,15 @@ export function decisionJournal(data: ModelData, manager: ManagerFile): JournalE
     const actual = hist.pts - hist.cost;
     const decisionScore = (expected - bestExpected) + 0.5 * transferEV;
     const luck = actual - expected;
-    const grade = decisionScore >= 1.5 ? 'A' : decisionScore >= -0.5 ? 'B' : decisionScore >= -2.5 ? 'C' : decisionScore >= -5 ? 'D' : 'F';
-    const good = decisionScore >= -0.5;
+    // Small gaps to the model's choice are noise, not mistakes.
+    const grade = decisionScore >= 1 ? 'A' : decisionScore >= -1.5 ? 'B' : decisionScore >= -3.5 ? 'C' : decisionScore >= -6 ? 'D' : 'F';
+    const good = decisionScore >= -1.5;
+    const capDiff = (xp(bestCap) - xp(cap)) * (chipMult - 1);
     out.push({
-      gw, chip: pk.chip, captain: cap, bestCaptain: bestCap, transfers, hitCost: hist.cost,
+      gw, chip: pk.chip, captain: cap, bestCaptain: bestCap,
+      capXp: xp(cap), bestCapXp: xp(bestCap), capActual: live.get(cap)?.pts ?? 0, bestCapActual: live.get(bestCap)?.pts ?? 0,
+      lineupLoss: Math.max(0, bestExpected - expected - capDiff), transferEV,
+      transfers, hitCost: hist.cost,
       expected, bestExpected, actual, decisionScore, luck, grade,
       verdict: good ? (luck >= 0 ? 'good-good' : 'good-bad') : (luck >= 0 ? 'bad-good' : 'bad-bad'),
     });

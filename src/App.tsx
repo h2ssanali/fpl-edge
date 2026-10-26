@@ -22,6 +22,7 @@ import { Chaos } from './screens/Chaos';
 import { Story } from './screens/Story';
 import { Deadline } from './screens/Deadline';
 import { Settings } from './screens/Settings';
+import { Method } from './screens/Method';
 
 
 function useRoute() {
@@ -39,7 +40,7 @@ const SCREENS: Record<string, ComponentType> = {
   home: Home, captain: Captain, transfers: Transfers, league: League, more: More,
   'more/prices': Prices, 'more/differentials': Differentials, 'more/fixtures': Fixtures, 'more/chips': Chips,
   'more/dream': Dream, 'more/injuries': Injuries, 'more/report': Report, 'more/hindsight': Hindsight,
-  'more/journal': Journal, 'more/chaos': Chaos, 'more/story': Story, 'more/deadline': Deadline, 'more/settings': Settings,
+  'more/journal': Journal, 'more/chaos': Chaos, 'more/story': Story, 'more/deadline': Deadline, 'more/settings': Settings, 'more/method': Method,
 };
 
 /** Welcome card: ask for a team ID until the visitor has entered one. */
