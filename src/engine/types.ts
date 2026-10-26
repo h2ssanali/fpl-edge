@@ -135,5 +135,7 @@ export interface PlayerProjection {
 export interface Distribution {
   mean: number; median: number; p10: number; p90: number; sd: number;
   pGoal: number; pAssist: number; pCS: number; p10plus: number; pBlank: number;
-  hist: number[]; // counts for points -2..30 (index = pts + 2), clipped
+  hist: number[]; // counts per bin; bin i covers [histStart + i*histStep, +histStep)
+  histStart: number;
+  histStep: number;
 }

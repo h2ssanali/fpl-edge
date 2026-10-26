@@ -185,14 +185,20 @@ export function simulate(setup: SimSetup, n = 10000, seed = 7): SimResult {
 export function summarize(values: ArrayLike<number>, flags?: Uint8Array): Distribution {
   const n = values.length;
   const sorted = Float64Array.from(values).sort();
+  // Adaptive bins: ~1 pt per bin for players, wider for squads and captains.
+  const lo = Math.floor(Math.min(-2, quantileSorted(sorted, 0.002)));
+  const hi = Math.ceil(quantileSorted(sorted, 0.998));
+  const histStep = Math.max(1, Math.ceil((hi - lo + 1) / 33));
+  const histStart = histStep === 1 ? lo : Math.floor(quantileSorted(sorted, 0.002) / histStep) * histStep;
+  const bins = Math.max(1, Math.ceil((hi - histStart + 1) / histStep));
+  const hist = new Array(bins).fill(0);
   let total = 0, sq = 0, p10plus = 0, blank = 0;
-  const hist = new Array(33).fill(0);
   for (let i = 0; i < n; i++) {
     const v = values[i];
     total += v; sq += v * v;
     if (v >= 10) p10plus++;
     if (v <= 2) blank++;
-    hist[Math.max(0, Math.min(32, Math.round(v) + 2))]++;
+    hist[Math.max(0, Math.min(bins - 1, Math.floor((v - histStart) / histStep)))]++;
   }
   let g = 0, a = 0, cs = 0;
   if (flags) for (let i = 0; i < n; i++) { if (flags[i] & FLAG_GOAL) g++; if (flags[i] & FLAG_ASSIST) a++; if (flags[i] & FLAG_CS) cs++; }
@@ -200,7 +206,7 @@ export function summarize(values: ArrayLike<number>, flags?: Uint8Array): Distri
   return {
     mean, median: quantileSorted(sorted, 0.5), p10: quantileSorted(sorted, 0.1), p90: quantileSorted(sorted, 0.9),
     sd: Math.sqrt(Math.max(0, sq / n - mean * mean)), pGoal: g / n, pAssist: a / n, pCS: cs / n,
-    p10plus: p10plus / n, pBlank: blank / n, hist,
+    p10plus: p10plus / n, pBlank: blank / n, hist, histStart, histStep,
   };
 }
 

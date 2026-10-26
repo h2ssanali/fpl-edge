@@ -1,0 +1,283 @@
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import type { Reason } from './engine/types';
+
+export type Lang = 'ar' | 'en';
+
+type Dict = Record<string, string>;
+
+const ar: Dict = {
+  appName: 'FPL Edge',
+  tagline: 'ميزتك على دوريك المصغّر',
+  'tab.home': 'الرئيسية', 'tab.captain': 'الكابتن', 'tab.transfers': 'الانتقالات', 'tab.league': 'الدوري', 'tab.more': 'المزيد',
+  loading: 'نجهّز الملعب…', loadingSim: 'نحاكي الجولة 10,000 مرة…', loadError: 'تعذّر تحميل البيانات', retry: 'إعادة المحاولة',
+  offline: 'أنت غير متصل — نعرض آخر بيانات محفوظة',
+  updated: 'آخر تحديث', gw: 'الجولة', gwShort: 'ج', deadline: 'الموعد النهائي', deadlinePassed: 'انتهى الموعد',
+  days: 'يوم', hours: 'ساعة', minutes: 'دقيقة', seconds: 'ثانية',
+  demoTitle: 'وضع العرض التجريبي', demoBody: 'نعرض فريق متصدّر الترتيب العام ({name}). لإضافة فريقك: عدّل {config} على GitHub وضع رقم فريقك، أو شغّل سير العمل مع الحقل team_id.',
+  demoConfig: 'ملف config.json', demoWorkflow: 'تشغيل التحديث',
+  points: 'نقطة', pts: 'نقاط', xPts: 'النقاط المتوقعة', xp: 'متوقع',
+  median: 'الوسيط', range: 'المدى ١٠–٩٠٪', p10: 'أسوأ ١٠٪', p90: 'أفضل ١٠٪',
+  pGoal: 'يسجّل', pAssist: 'يصنع', pCS: 'شباك نظيفة', p10plus: '+10 نقاط', pBlank: 'يخفق (≤2)',
+  // home
+  'home.captain': 'الكابتن المقترح', 'home.transfer': 'أفضل انتقال', 'home.winProb': 'احتمال الفوز بالدوري',
+  'home.chaos': 'مؤشر الفوضى', 'home.squad': 'توقع فريقك هذه الجولة', 'home.report': 'تقرير الجولة الماضية',
+  'home.noTransfer': 'لا يوجد انتقال يستحق — احتفظ بانتقالك', 'home.seeAll': 'عرض الكل', 'home.leagueRank': 'ترتيبك في الدوري',
+  'home.deadlineMode': 'وضع الموعد النهائي', 'home.story': 'بطاقة ستوري',
+  // captain
+  'cap.title': 'اختيار الكابتن', 'cap.sub': 'توزيع كامل لنقاط كل مرشح من 10,000 محاكاة — نقاط الكابتن مضاعفة.',
+  'cap.safe': 'آمن', 'cap.upside': 'مغامرة', 'cap.mean': 'المعدل', 'cap.leagueEo': 'ملكية فعلية في دوريك', 'cap.topEo': 'كابتن لدى أفضل 10 آلاف',
+  'cap.safeHint': 'الآمن يفضّل الأرضية العالية (أسوأ ١٠٪ والوسيط)، والمغامرة تفضّل السقف (أفضل ١٠٪ واحتمال +10).',
+  'cap.pick': 'اختيار Edge',
+  // transfers
+  'tr.title': 'مخطط الانتقالات', 'tr.sub': 'خطّط لست جولات: اسحب لاعباً من القائمة وأفلته على لاعب في التشكيلة، أو المس لاعباً ثم بديله.',
+  'tr.bank': 'الرصيد', 'tr.ft': 'انتقالات مجانية', 'tr.hits': 'خصم', 'tr.projected': 'المتوقع', 'tr.vsBaseline': 'مقارنة بلا انتقالات',
+  'tr.optimizer': 'المُحسِّن', 'tr.optSub': 'أفضل 1 أو 2 أو 3 انتقالات حسب رصيدك وانتقالاتك المجانية.', 'tr.horizon': 'المدى',
+  'tr.moves': 'انتقالات', 'tr.gain': 'المكسب', 'tr.net': 'الصافي', 'tr.add': 'أضف للخطة', 'tr.clear': 'مسح الخطة',
+  'tr.hitValue': 'القيمة الحقيقية لخصم −4', 'tr.hitWorth': 'الانتقال الإضافي يضيف {gain} نقطة مقابل خصم 4 — {verdict}',
+  'tr.worth': 'يستحق', 'tr.notWorth': 'لا يستحق', 'tr.search': 'ابحث عن لاعب…', 'tr.selectOut': 'اختر لاعباً لبيعه', 'tr.selected': 'سيُباع: {name} — اختر البديل',
+  'tr.problem.budget': 'الرصيد لا يكفي', 'tr.problem.teamLimit': 'أكثر من 3 لاعبين من فريق واحد', 'tr.problem.position': 'مركز مختلف',
+  'tr.dragHint': 'اسحب الانتقال بين الجولات لتغيير توقيته', 'tr.noSquad': 'لا تتوفر تشكيلة بعد.', 'tr.all': 'الكل',
+  'tr.chip': 'شريحة', 'tr.none': 'بدون', 'tr.sell': 'سعر البيع', 'tr.undo': 'تراجع',
+  // league
+  'lg.title': 'الدوري المصغّر', 'lg.standings': 'الترتيب', 'lg.dial': 'المخاطرة', 'lg.rivals': 'الخصوم', 'lg.eo': 'ماذا لو',
+  'lg.dialTitle': 'مؤشر المخاطرة', 'lg.rivalsTitle': 'حمض الخصوم',
+  'lg.pWin': 'يفوز باللقب', 'lg.pLead': 'يتصدر بعد الجولة', 'lg.expRank': 'الترتيب المتوقع', 'lg.total': 'المجموع', 'lg.gap': 'الفارق',
+  'lg.you': 'أنت', 'lg.demoNote': 'في الوضع التجريبي نستخدم أفضل 20 مديراً في الترتيب العام كدوري مصغّر.',
+  'lg.mode.protect': 'حماية', 'lg.mode.balanced': 'توازن', 'lg.mode.attack': 'هجوم',
+  'lg.modeExplain.protect': 'أنت في الصدارة: غطِّ لاعبي خصومك (الملكية الفعلية) وقلّل التباين.',
+  'lg.modeExplain.balanced': 'المنافسة متقاربة: اتبع أعلى النقاط المتوقعة.',
+  'lg.modeExplain.attack': 'أنت تطارد: ارفع التباين واختر لاعبين مختلفين عن خصومك.',
+  'lg.dialSub': 'نحسّن احتمال فوزك بالدوري، لا مجرد النقاط. حرّك المؤشر لترى كيف تتغير التوصيات.',
+  'lg.moveImpact': 'أثر كل انتقال على احتمال فوزك', 'lg.before': 'الآن', 'lg.after': 'بعده',
+  'lg.whatIf': 'ماذا لو؟', 'lg.whatIfSub': 'اختر لاعباً لترى أين ستكون بعد الجولة إن أخفق أو تألق.',
+  'lg.ifBlank': 'إن أخفق {name} ستكون في المركز {rank}', 'lg.ifHaul': 'إن تألق {name} ستكون في المركز {rank}',
+  'lg.eoTable': 'الملكية الفعلية بين خصومك', 'lg.own': 'تملكه', 'lg.notOwn': 'لا تملكه',
+  'lg.captaincy': 'أسلوب الكابتن', 'lg.style.template': 'تقليدي', 'lg.style.balanced': 'متوازن', 'lg.style.contrarian': 'معاكس',
+  'lg.hits': 'الخصومات', 'lg.chaser': 'يطارد المتألقين', 'lg.notChaser': 'لا يطارد', 'lg.bank': 'متوسط الرصيد', 'lg.chipsLeft': 'شرائح متبقية',
+  'lg.predCaptain': 'الكابتن المتوقع', 'lg.predIn': 'قد يشتري', 'lg.predOut': 'قد يبيع', 'lg.beat': 'احتمال تجاوزه', 'lg.howToBeat': 'كيف تتفوق عليه',
+  'lg.perGw': 'انتقال/جولة', 'lg.avgPts': 'معدل النقاط', 'lg.capHit': 'نجاح الكابتن', 'lg.bench': 'نقاط الدكة/جولة',
+  // more
+  'more.title': 'المزيد', 'more.prices': 'رادار الأسعار', 'more.pricesSub': 'من سيرتفع ومن سينخفض الليلة',
+  'more.diffs': 'اللاعبون المختلفون', 'more.diffsSub': 'نقاط عالية بملكية منخفضة', 'more.fixtures': 'جدول المباريات', 'more.fixturesSub': 'صعوبة 8 جولات قادمة',
+  'more.chips': 'مخطط الشرائح', 'more.chipsSub': 'أفضل جولة لكل شريحة', 'more.dream': 'الفريق الحلم', 'more.dreamSub': 'أفضل 15 بميزانيتك',
+  'more.injuries': 'الإصابات والتشكيلة', 'more.injuriesSub': 'الأخبار واحتمال البداية', 'more.report': 'تقرير الجولة', 'more.reportSub': 'ما نجح وما أخفق',
+  'more.hindsight': 'محرك الأثر الرجعي', 'more.hindsightSub': 'لو اتبعت FPL Edge طوال الموسم', 'more.journal': 'سجل القرارات', 'more.journalSub': 'المهارة مقابل الحظ',
+  'more.chaos': 'مؤشر الفوضى', 'more.chaosSub': 'متى تلعب بأمان ومتى تغامر', 'more.story': 'بطاقات الستوري', 'more.storySub': 'صور 9:16 جاهزة لإنستغرام',
+  'more.deadline': 'وضع الموعد النهائي', 'more.deadlineSub': 'قائمة التحقق الأخيرة', 'more.settings': 'الإعدادات', 'more.settingsSub': 'رقم الفريق واللغة والمظهر',
+  new: 'جديد',
+  // prices
+  'pr.title': 'رادار الأسعار', 'pr.sub': 'مبني على تقدّم تغيّر السعر الذي تنشره FPL وصافي الانتقالات مقابل الملكية.',
+  'pr.risers': 'مرشحون للارتفاع', 'pr.fallers': 'مرشحون للانخفاض', 'pr.tonight': 'الليلة', 'pr.progress': 'التقدم',
+  'pr.buyBefore': 'اشترِه قبل أن يرتفع', 'pr.sellBefore': 'بِعه قبل أن ينخفض', 'pr.teamValue': 'قيمة فريقك', 'pr.net': 'صافي الانتقالات',
+  'pr.yourAlerts': 'تنبيهات تخص فريقك', 'pr.noAlerts': 'لا تغييرات متوقعة على لاعبيك.',
+  // differentials
+  'df.title': 'اللاعبون المختلفون', 'df.sub': 'مرتبون حسب المكسب المتوقع في الترتيب: نقاط متوقعة (4 جولات) لا يملكها خصومك.',
+  'df.sel': 'ملكية عامة', 'df.leagueEo': 'ملكية دوريك', 'df.gain': 'مكسب الترتيب',
+  // fixtures
+  'fx.title': 'جدول الصعوبة', 'fx.sub': 'من نموذجنا الخاص (xG مع/ضد وقوة الملعب). الجولات المزدوجة مؤطرة والفارغة مخططة.',
+  'fx.sortAtt': 'هجوم', 'fx.sortDef': 'دفاع', 'fx.sortAll': 'إجمالي', 'fx.dgw': 'مزدوجة', 'fx.bgw': 'فارغة',
+  // chips
+  'ch.title': 'مخطط الشرائح', 'ch.sub': 'قيمة كل شريحة لكل جولة من المحاكاة وجدول المباريات.',
+  'ch.wildcard': 'البطاقة الحرة', 'ch.freehit': 'الضربة الحرة', 'ch.bboost': 'تعزيز الدكة', 'ch.3xc': 'الكابتن الثلاثي',
+  'ch.best': 'أفضل جولة', 'ch.used': 'مستخدمة في هذا النصف', 'ch.available': 'متاحة حتى الجولة {gw}', 'ch.value': '+{v} نقطة متوقعة',
+  'ch.noneAvail': 'لا توجد شرائح متاحة الآن — الدفعة الثانية تفتح في الجولة 20.', 'ch.computing': 'نحسب قيم الشرائح…',
+  // dream
+  'dt.title': 'الفريق الحلم', 'dt.sub': 'أفضل 15 لاعباً تحت الميزانية للجولات القادمة (تحسين بالبحث المحلي).',
+  'dt.budget': 'الميزانية', 'dt.gws': 'الجولات', 'dt.build': 'ابنِ الفريق', 'dt.cost': 'التكلفة', 'dt.value': 'المتوقع',
+  // injuries
+  'in.title': 'الإصابات والتشكيلة', 'in.sub': 'الأخبار الرسمية، احتمال البداية من نموذجنا، وتحذيرات المداورة.',
+  'in.mine': 'في فريقك', 'in.start': 'يبدأ', 'in.rotation': 'خطر مداورة', 'in.status.d': 'مشكوك', 'in.status.i': 'مصاب', 'in.status.s': 'موقوف', 'in.status.n': 'غير متاح', 'in.status.a': 'متاح',
+  // report
+  'rp.title': 'تقرير الجولة', 'rp.vsAvg': 'مقارنة بالمعدل', 'rp.vsTop': 'مقارنة بأفضل 10 آلاف', 'rp.right': 'ما نجح', 'rp.wrong': 'ما أخفق',
+  'rp.captain': 'كابتنك {name} جلب {pts} نقطة', 'rp.bestCap': 'أفضل خيار كان {name} ({pts})', 'rp.bench': 'تركت {pts} نقطة على الدكة',
+  'rp.best': 'نجمك: {name} ({pts})', 'rp.worst': 'الأسوأ: {name} ({pts})', 'rp.transfer': '{in} ({inPts}) بدل {out} ({outPts})',
+  'rp.missed': 'فاتك {name} ({pts} نقطة، ملكية {eo}٪)', 'rp.diffHit': 'رهانك المختلف {name} نجح ({pts})', 'rp.optimal': 'أفضل تشكيلة ممكنة: {pts}',
+  'rp.provisional': 'نتائج مؤقتة — قد تتغير نقاط البونص', 'rp.hit': 'خصم {pts} نقاط',
+  // hindsight
+  'hs.title': 'محرك الأثر الرجعي', 'hs.sub': 'نعيد تشغيل النموذج كما لو كنا قبل كل جولة (بالبيانات المتاحة وقتها فقط) ونقيس النتيجة الحقيقية.',
+  'hs.yours': 'نقاطك', 'hs.lineup': 'تشكيلتك بقرارات Edge', 'hs.autopilot': 'Edge على الطيار الآلي', 'hs.rank': 'ترتيب تقريبي',
+  'hs.headline': 'لو اتبعت FPL Edge في التشكيلة والكابتن لكان لديك {pts} نقطة وترتيب ≈ {rank}.',
+  'hs.accuracy': 'دقة النموذج', 'hs.mae': 'متوسط الخطأ لكل لاعب', 'hs.corr': 'الارتباط', 'hs.capWins': 'كابتن Edge ≥ كابتنك',
+  'hs.misses': 'أين أخطأ النموذج', 'hs.autopilotNote': 'الطيار الآلي يبدأ من فريقك في الجولة الأولى ويجري انتقالات مجانية فقط ولا يستخدم الشرائح.',
+  'hs.statusNote': 'لا تتوفر أخبار الإصابات التاريخية، لذلك يعتمد الاختبار على الدقائق فقط.',
+  // journal
+  'jr.title': 'سجل القرارات', 'jr.sub': 'نقيّم جودة القرار (النقاط المتوقعة وقتها) بمعزل عن النتيجة.',
+  'jr.decision': 'القرار', 'jr.luck': 'الحظ', 'jr.expected': 'متوقع', 'jr.actual': 'فعلي',
+  'jr.v.good-good': 'قرار جيد وحظ جيد', 'jr.v.good-bad': 'قرار جيد وحظ سيئ', 'jr.v.bad-good': 'قرار ضعيف وحظ جيد', 'jr.v.bad-bad': 'قرار ضعيف وحظ سيئ',
+  'jr.capChoice': 'الكابتن: {cap}', 'jr.capBetter': 'الأفضل حسب النموذج: {best}', 'jr.season': 'الموسم: قرارات {d} وحظ {l}',
+  // chaos
+  'cx.title': 'مؤشر الفوضى', 'cx.sub': 'توقّع لمدى عشوائية كل جولة من توازن المباريات وتشتت نقاط الفريق الشائع.',
+  'cx.calm': 'هادئة', 'cx.normal': 'عادية', 'cx.wild': 'فوضوية', 'cx.safe': 'العب بأمان: الفريق الشائع سيصمد غالباً.',
+  'cx.neutral': 'جولة عادية: التزم بالنقاط المتوقعة.', 'cx.gamble': 'غامر إن كنت تطارد: النتائج العشوائية فرصتك.',
+  'cx.balance': 'توازن المباريات', 'cx.fragility': 'هشاشة الفريق الشائع', 'cx.capRisk': 'خطر إخفاق الكابتن الشائع', 'cx.irregular': 'جولات مزدوجة/فارغة',
+  // story
+  'st.title': 'بطاقات الستوري', 'st.sub': 'صورة 9:16 مصممة جاهزة للنشر على ريلز وستوري إنستغرام.',
+  'st.gw': 'جولتي', 'st.captain': 'كابتني', 'st.prediction': 'توقعي', 'st.league': 'دوريي', 'st.share': 'مشاركة', 'st.download': 'تنزيل',
+  // deadline
+  'dl.title': 'وضع الموعد النهائي', 'dl.sub': 'العد التنازلي وقائمة التحقق الأخيرة.',
+  'dl.check.news': 'أخبار متأخرة في فريقك', 'dl.check.captain': 'تثبيت الكابتن', 'dl.check.bench': 'ترتيب الدكة', 'dl.check.autosub': 'احتمال دخول كل بديل',
+  'dl.allClear': 'لا أخبار مقلقة في تشكيلتك الأساسية', 'dl.capLock': 'الكابتن: {cap} — نائب: {vice}', 'dl.lastHours': 'الساعات الأخيرة: راجع كل شيء الآن',
+  // settings
+  'set.title': 'الإعدادات', 'set.lang': 'اللغة', 'set.theme': 'المظهر', 'set.dark': 'ليلي', 'set.light': 'نهاري',
+  'set.team': 'رقم فريقك', 'set.teamHow': 'افتح موقع FPL ← النقاط، الرقم في الرابط بعد /entry/. ضعه في config.json مع أرقام دورياتك المصغّرة، أو شغّل سير العمل وأدخل team_id.',
+  'set.editConfig': 'تعديل config.json', 'set.runWorkflow': 'تشغيل التحديث الآن', 'set.current': 'الحالي', 'set.data': 'البيانات',
+  'set.mode.demo': 'تجريبي', 'set.mode.user': 'فريقك', 'set.howUpdates': 'تُحدَّث البيانات تلقائياً كل 6 ساعات، وكل ساعة في يوم الموعد النهائي.',
+  // reasons
+  'r.fixture': 'ضد {opp} ({venue})', 'r.double': 'جولة مزدوجة', 'r.blank': 'لا مباراة هذه الجولة', 'r.xg90': '{v} xG/90', 'r.xa90': '{v} xA/90',
+  'r.start': 'احتمال البداية {v}٪', 'r.cs': 'شباك نظيفة {v}٪', 'r.dc': 'مساهمة دفاعية {v}٪', 'r.pens': 'منفذ الركلات', 'r.bonus': 'بونص {v}/90',
+  'r.news': '{v}', 'r.rotation': 'خطر مداورة', H: 'أرض', A: 'خارج',
+  'why': 'لماذا؟',
+};
+
+const en: Dict = {
+  appName: 'FPL Edge',
+  tagline: 'Your edge over the mini-league',
+  'tab.home': 'Home', 'tab.captain': 'Captain', 'tab.transfers': 'Transfers', 'tab.league': 'League', 'tab.more': 'More',
+  loading: 'Setting up the pitch…', loadingSim: 'Simulating the gameweek 10,000 times…', loadError: 'Could not load data', retry: 'Retry',
+  offline: 'You are offline — showing the last saved data',
+  updated: 'Updated', gw: 'GW', gwShort: 'GW', deadline: 'Deadline', deadlinePassed: 'Deadline passed',
+  days: 'days', hours: 'hrs', minutes: 'min', seconds: 'sec',
+  demoTitle: 'Demo mode', demoBody: 'Showing the overall #1 team ({name}). To use your own team, set your ID in {config} on GitHub, or run the workflow with the team_id input.',
+  demoConfig: 'config.json', demoWorkflow: 'Run update',
+  points: 'pts', pts: 'pts', xPts: 'Expected points', xp: 'xP',
+  median: 'Median', range: '10–90% range', p10: 'Worst 10%', p90: 'Best 10%',
+  pGoal: 'Goal', pAssist: 'Assist', pCS: 'Clean sheet', p10plus: '10+ pts', pBlank: 'Blank (≤2)',
+  'home.captain': 'Recommended captain', 'home.transfer': 'Top transfer', 'home.winProb': 'League win probability',
+  'home.chaos': 'Chaos index', 'home.squad': 'Your squad this GW', 'home.report': 'Last gameweek report',
+  'home.noTransfer': 'No transfer worth making — roll it', 'home.seeAll': 'See all', 'home.leagueRank': 'League position',
+  'home.deadlineMode': 'Deadline mode', 'home.story': 'Story card',
+  'cap.title': 'Captain picker', 'cap.sub': 'Full point distributions from 10,000 simulations — captain points doubled.',
+  'cap.safe': 'Safe', 'cap.upside': 'Upside', 'cap.mean': 'Mean', 'cap.leagueEo': 'League EO', 'cap.topEo': 'Top 10k captaincy',
+  'cap.safeHint': 'Safe favours a high floor (p10 and median); upside favours the ceiling (p90 and P(10+)).',
+  'cap.pick': 'Edge pick',
+  'tr.title': 'Transfer planner', 'tr.sub': 'Plan six gameweeks: drag a player from the list onto a squad player, or tap a player then the replacement.',
+  'tr.bank': 'Bank', 'tr.ft': 'Free transfers', 'tr.hits': 'Hits', 'tr.projected': 'Projected', 'tr.vsBaseline': 'vs no transfers',
+  'tr.optimizer': 'Optimizer', 'tr.optSub': 'Best 1, 2 or 3 moves for your bank and free transfers.', 'tr.horizon': 'Horizon',
+  'tr.moves': 'moves', 'tr.gain': 'Gain', 'tr.net': 'Net', 'tr.add': 'Add to plan', 'tr.clear': 'Clear plan',
+  'tr.hitValue': 'True value of a −4', 'tr.hitWorth': 'The extra move adds {gain} pts against a 4-pt hit — {verdict}',
+  'tr.worth': 'worth it', 'tr.notWorth': 'not worth it', 'tr.search': 'Search player…', 'tr.selectOut': 'Pick a player to sell', 'tr.selected': 'Selling {name} — pick a replacement',
+  'tr.problem.budget': 'Not enough money', 'tr.problem.teamLimit': 'More than 3 from one club', 'tr.problem.position': 'Different position',
+  'tr.dragHint': 'Drag transfers between gameweeks to retime them', 'tr.noSquad': 'No squad available yet.', 'tr.all': 'All',
+  'tr.chip': 'Chip', 'tr.none': 'None', 'tr.sell': 'Sell price', 'tr.undo': 'Undo',
+  'lg.title': 'Mini-league', 'lg.standings': 'Table', 'lg.dial': 'Risk', 'lg.rivals': 'Rivals', 'lg.eo': 'What if',
+  'lg.dialTitle': 'Risk dial', 'lg.rivalsTitle': 'Rival DNA',
+  'lg.pWin': 'Wins title', 'lg.pLead': 'Leads after GW', 'lg.expRank': 'Exp. rank', 'lg.total': 'Total', 'lg.gap': 'Gap',
+  'lg.you': 'You', 'lg.demoNote': 'In demo mode the overall top 20 act as the mini-league.',
+  'lg.mode.protect': 'Protect', 'lg.mode.balanced': 'Balanced', 'lg.mode.attack': 'Attack',
+  'lg.modeExplain.protect': 'You lead: cover your rivals’ effective ownership and reduce variance.',
+  'lg.modeExplain.balanced': 'It’s tight: follow the highest expected points.',
+  'lg.modeExplain.attack': 'You’re chasing: add variance and back players your rivals don’t own.',
+  'lg.dialSub': 'We optimise your chance of winning the league, not just points. Move the dial to see recommendations change.',
+  'lg.moveImpact': 'How each move changes your win probability', 'lg.before': 'Now', 'lg.after': 'After',
+  'lg.whatIf': 'What if?', 'lg.whatIfSub': 'Pick a player to see where you’d be after the GW if he blanks or hauls.',
+  'lg.ifBlank': 'If {name} blanks you’ll be ~{rank}', 'lg.ifHaul': 'If {name} hauls you’ll be ~{rank}',
+  'lg.eoTable': 'Effective ownership among your rivals', 'lg.own': 'You own', 'lg.notOwn': 'Not owned',
+  'lg.captaincy': 'Captaincy', 'lg.style.template': 'Template', 'lg.style.balanced': 'Balanced', 'lg.style.contrarian': 'Contrarian',
+  'lg.hits': 'Hits', 'lg.chaser': 'Chases hauls', 'lg.notChaser': 'Doesn’t chase', 'lg.bank': 'Avg bank', 'lg.chipsLeft': 'Chips left',
+  'lg.predCaptain': 'Likely captain', 'lg.predIn': 'Might buy', 'lg.predOut': 'Might sell', 'lg.beat': 'P(pass them)', 'lg.howToBeat': 'How to beat them',
+  'lg.perGw': 'transfers/GW', 'lg.avgPts': 'Avg pts', 'lg.capHit': 'Captain hit rate', 'lg.bench': 'Bench pts/GW',
+  'more.title': 'More', 'more.prices': 'Price radar', 'more.pricesSub': 'Who rises and falls tonight',
+  'more.diffs': 'Differentials', 'more.diffsSub': 'High xP, low ownership', 'more.fixtures': 'Fixture ticker', 'more.fixturesSub': '8-GW difficulty grid',
+  'more.chips': 'Chip planner', 'more.chipsSub': 'Best GW for each chip', 'more.dream': 'Dream team', 'more.dreamSub': 'Optimal 15 on your budget',
+  'more.injuries': 'Injury & lineup watch', 'more.injuriesSub': 'News and start odds', 'more.report': 'GW report', 'more.reportSub': 'What went right and wrong',
+  'more.hindsight': 'Hindsight engine', 'more.hindsightSub': 'If you’d followed FPL Edge', 'more.journal': 'Decision journal', 'more.journalSub': 'Skill vs luck',
+  'more.chaos': 'Chaos index', 'more.chaosSub': 'When to play safe or gamble', 'more.story': 'Story cards', 'more.storySub': '9:16 images for Instagram',
+  'more.deadline': 'Deadline mode', 'more.deadlineSub': 'Final checklist', 'more.settings': 'Settings', 'more.settingsSub': 'Team ID, language, theme',
+  new: 'New',
+  'pr.title': 'Price radar', 'pr.sub': 'Built on FPL’s published price-change progress and net transfers vs ownership.',
+  'pr.risers': 'Likely risers', 'pr.fallers': 'Likely fallers', 'pr.tonight': 'Tonight', 'pr.progress': 'Progress',
+  'pr.buyBefore': 'Buy before it rises', 'pr.sellBefore': 'Sell before it drops', 'pr.teamValue': 'Team value', 'pr.net': 'Net transfers',
+  'pr.yourAlerts': 'Alerts for your squad', 'pr.noAlerts': 'No price changes expected for your players.',
+  'df.title': 'Differentials', 'df.sub': 'Ranked by expected rank gain: projected points (4 GWs) your rivals don’t own.',
+  'df.sel': 'Selected', 'df.leagueEo': 'League EO', 'df.gain': 'Rank gain',
+  'fx.title': 'Fixture ticker', 'fx.sub': 'From our own model (xG for/against, venue). Doubles are outlined, blanks hatched.',
+  'fx.sortAtt': 'Attack', 'fx.sortDef': 'Defence', 'fx.sortAll': 'Overall', 'fx.dgw': 'Double', 'fx.bgw': 'Blank',
+  'ch.title': 'Chip planner', 'ch.sub': 'Value of each chip per gameweek from the simulations and fixtures.',
+  'ch.wildcard': 'Wildcard', 'ch.freehit': 'Free Hit', 'ch.bboost': 'Bench Boost', 'ch.3xc': 'Triple Captain',
+  'ch.best': 'Best GW', 'ch.used': 'Used this half', 'ch.available': 'Available until GW{gw}', 'ch.value': '+{v} expected pts',
+  'ch.noneAvail': 'No chips available right now — the second set opens in GW20.', 'ch.computing': 'Computing chip values…',
+  'dt.title': 'Dream team', 'dt.sub': 'The best 15 under budget for the next gameweeks (local-search optimisation).',
+  'dt.budget': 'Budget', 'dt.gws': 'Gameweeks', 'dt.build': 'Build', 'dt.cost': 'Cost', 'dt.value': 'Projected',
+  'in.title': 'Injury & lineup watch', 'in.sub': 'Official news, our start probability, and rotation warnings.',
+  'in.mine': 'In your team', 'in.start': 'Starts', 'in.rotation': 'Rotation risk', 'in.status.d': 'Doubtful', 'in.status.i': 'Injured', 'in.status.s': 'Suspended', 'in.status.n': 'Unavailable', 'in.status.a': 'Available',
+  'rp.title': 'Gameweek report', 'rp.vsAvg': 'vs average', 'rp.vsTop': 'vs top 10k', 'rp.right': 'What went right', 'rp.wrong': 'What went wrong',
+  'rp.captain': 'Your captain {name} returned {pts}', 'rp.bestCap': 'Best option was {name} ({pts})', 'rp.bench': 'You left {pts} pts on the bench',
+  'rp.best': 'Star: {name} ({pts})', 'rp.worst': 'Weakest: {name} ({pts})', 'rp.transfer': '{in} ({inPts}) for {out} ({outPts})',
+  'rp.missed': 'You missed {name} ({pts} pts, {eo}% EO)', 'rp.diffHit': 'Your differential {name} delivered ({pts})', 'rp.optimal': 'Best possible lineup: {pts}',
+  'rp.provisional': 'Provisional — bonus may still change', 'rp.hit': '{pts}-pt hit',
+  'hs.title': 'Hindsight engine', 'hs.sub': 'We replay the model as of each deadline (only data available then) and score it with what actually happened.',
+  'hs.yours': 'Your points', 'hs.lineup': 'Your squads, Edge decisions', 'hs.autopilot': 'Edge on autopilot', 'hs.rank': 'Approx. rank',
+  'hs.headline': 'Following FPL Edge for lineups and captains you’d have {pts} points and rank ≈ {rank}.',
+  'hs.accuracy': 'Model accuracy', 'hs.mae': 'Mean abs. error per player', 'hs.corr': 'Correlation', 'hs.capWins': 'Edge captain ≥ yours',
+  'hs.misses': 'Where the model was wrong', 'hs.autopilotNote': 'Autopilot starts from your GW1 squad, makes free transfers only and uses no chips.',
+  'hs.statusNote': 'Historical injury news isn’t available, so the backtest relies on minutes only.',
+  'jr.title': 'Decision journal', 'jr.sub': 'We grade decision quality (expected points at the time) separately from the outcome.',
+  'jr.decision': 'Decision', 'jr.luck': 'Luck', 'jr.expected': 'Expected', 'jr.actual': 'Actual',
+  'jr.v.good-good': 'Good decision, good luck', 'jr.v.good-bad': 'Good decision, bad luck', 'jr.v.bad-good': 'Weak decision, good luck', 'jr.v.bad-bad': 'Weak decision, bad luck',
+  'jr.capChoice': 'Captain: {cap}', 'jr.capBetter': 'Model’s best: {best}', 'jr.season': 'Season: decisions {d}, luck {l}',
+  'cx.title': 'Chaos index', 'cx.sub': 'How random each gameweek is likely to be, from fixture balance and template variance.',
+  'cx.calm': 'Calm', 'cx.normal': 'Normal', 'cx.wild': 'Wild', 'cx.safe': 'Play safe: the template should hold.',
+  'cx.neutral': 'A normal week: stick to expected points.', 'cx.gamble': 'Gamble if chasing: randomness is your friend.',
+  'cx.balance': 'Fixture balance', 'cx.fragility': 'Template fragility', 'cx.capRisk': 'Template captain blank risk', 'cx.irregular': 'Doubles / blanks',
+  'st.title': 'Story cards', 'st.sub': 'A designed 9:16 image ready for Reels and Instagram Stories.',
+  'st.gw': 'My GW', 'st.captain': 'My captain', 'st.prediction': 'My prediction', 'st.league': 'My league', 'st.share': 'Share', 'st.download': 'Download',
+  'dl.title': 'Deadline mode', 'dl.sub': 'Countdown and the final checklist.',
+  'dl.check.news': 'Late news in your team', 'dl.check.captain': 'Captain lock', 'dl.check.bench': 'Bench order', 'dl.check.autosub': 'Auto-sub probability per bench player',
+  'dl.allClear': 'No worrying news in your starting XI', 'dl.capLock': 'Captain: {cap} — vice: {vice}', 'dl.lastHours': 'Final hours: check everything now',
+  'set.title': 'Settings', 'set.lang': 'Language', 'set.theme': 'Theme', 'set.dark': 'Night', 'set.light': 'Day',
+  'set.team': 'Your team ID', 'set.teamHow': 'Open the FPL site → Points; the number after /entry/ in the URL. Put it in config.json with your mini-league IDs, or run the workflow with team_id.',
+  'set.editConfig': 'Edit config.json', 'set.runWorkflow': 'Run update now', 'set.current': 'Current', 'set.data': 'Data',
+  'set.mode.demo': 'Demo', 'set.mode.user': 'Your team', 'set.howUpdates': 'Data refreshes automatically every 6 hours, and hourly on deadline day.',
+  'r.fixture': 'vs {opp} ({venue})', 'r.double': 'Double gameweek', 'r.blank': 'No fixture this GW', 'r.xg90': '{v} xG/90', 'r.xa90': '{v} xA/90',
+  'r.start': '{v}% start probability', 'r.cs': '{v}% clean sheet', 'r.dc': '{v}% defensive contribution', 'r.pens': 'On penalties', 'r.bonus': '{v} bonus/90',
+  'r.news': '{v}', 'r.rotation': 'Rotation risk', H: 'H', A: 'A',
+  'why': 'Why?',
+};
+
+const dicts: Record<Lang, Dict> = { ar, en };
+
+export type T = (key: string, params?: Record<string, string | number>) => string;
+
+function makeT(lang: Lang): T {
+  return (key, params) => {
+    let s = dicts[lang][key] ?? dicts.en[key] ?? key;
+    if (params) for (const [k, v] of Object.entries(params)) s = s.split(`{${k}}`).join(String(v));
+    return s;
+  };
+}
+
+interface I18n { lang: Lang; t: T; setLang: (l: Lang) => void; fmt: (n: number, d?: number) => string; pct: (p: number, d?: number) => string; reason: (r: Reason) => string }
+
+const Ctx = createContext<I18n | null>(null);
+
+const safeGet = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
+const safeSet = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* ignore */ } };
+
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const [lang, setLangState] = useState<Lang>(() => (safeGet('fpl-edge-lang') as Lang) || 'ar');
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  }, [lang]);
+  const value = useMemo<I18n>(() => {
+    const t = makeT(lang);
+    // Western digits read best for stats in both languages (and match FPL itself).
+    const fmt = (n: number, d = 1) => (Number.isFinite(n) ? n.toFixed(d) : '—');
+    const pct = (p: number, d = 0) => `${(p * 100).toFixed(d)}%`;
+    const reason = (r: Reason) => {
+      const params = { ...r.params } as Record<string, string | number>;
+      if (r.key === 'fixture') params.venue = t(String(r.params.venue));
+      return t(`r.${r.key}`, params);
+    };
+    return { lang, t, setLang: (l) => { safeSet('fpl-edge-lang', l); setLangState(l); }, fmt, pct, reason };
+  }, [lang]);
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+export function useI18n(): I18n {
+  const v = useContext(Ctx);
+  if (!v) throw new Error('I18nProvider missing');
+  return v;
+}
+
+export { safeGet, safeSet };
