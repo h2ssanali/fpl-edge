@@ -43,3 +43,32 @@ describe.skipIf(!has)('analyzer on real data', () => {
     console.log('report', JSON.stringify(p2.report).slice(0, 400));
   }, 60000);
 });
+
+describe.skipIf(!has)('wildcard builder', () => {
+  it('builds legal squads around a locked player', () => {
+    const meta = read('meta.json');
+    const raw: RawData = {
+      meta, core: read('core.json'), fixtures: read('fixtures.json'),
+      live: meta.liveGws.map((g: number) => read(`live/${g}.json`)),
+      managers: fs.readdirSync(path.join(D, 'managers')).map((f) => read(`managers/${f}`)),
+      leagues: [], top: null, perGw: null, snapshots: [],
+    };
+    const az = new Analyzer(raw);
+    az.phase1();
+    const palmer = raw.core.players.find((p) => p.web === 'Palmer')!;
+    const t0 = Date.now();
+    const res = az.wildcard([palmer.id], [], 6);
+    console.log(`wildcard ${Date.now() - t0}ms budget ${res.budget}`, res.options.map((o) => [o.kind, o.value.toFixed(1), o.cost, o.ins.length, o.avgOwnership.toFixed(1), o.sameAs]));
+    expect(res.options.length).toBeGreaterThanOrEqual(2);
+    for (const o of res.options) {
+      expect(o.squad).toHaveLength(15);
+      expect(o.squad.some((m) => m.id === palmer.id)).toBe(true);
+      expect(o.cost).toBeLessThanOrEqual(res.budget);
+      const teams = new Map<number, number>();
+      o.squad.forEach((m) => teams.set(m.team, (teams.get(m.team) ?? 0) + 1));
+      expect(Math.max(...teams.values())).toBeLessThanOrEqual(3);
+    }
+    // The "best" option has the highest true expected points.
+    expect(res.options[0].value).toBeGreaterThanOrEqual(Math.max(...res.options.map((o) => o.value)) - 0.01);
+  }, 60000);
+});

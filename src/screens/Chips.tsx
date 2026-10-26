@@ -61,6 +61,7 @@ export function Chips() {
                   {c.available && c.window ? t('ch.availableRange', { a: c.window[0], b: c.window[1] }) : t('ch.usedIn', { gws: used.length ? used.join('، ') : '—' })}
                 </div>
                 {reason && <p style={{ margin: '8px 0 0', lineHeight: 1.7 }}><b>{t('ch.whyLabel')}</b> {reason}</p>}
+                {c.chip === 'wildcard' && <a className="btn small primary" href="#/more/wildcard" style={{ marginTop: 8 }}>{t('wc.cta')}</a>}
                 {vals.length > 0 && (
                   <>
                     <div className="row" style={{ alignItems: 'flex-end', gap: 4, height: 70, marginTop: 10 }} dir="ltr">

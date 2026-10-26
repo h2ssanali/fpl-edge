@@ -9,6 +9,7 @@ type Msg =
   | { id: number; type: 'optimize'; payload: { horizon: number; maxMoves: number; exclude?: number[] } }
   | { id: number; type: 'impacts'; payload: { dial: number; horizon?: number } }
   | { id: number; type: 'dream'; payload: { budget: number; horizon: number } }
+  | { id: number; type: 'wildcard'; payload: { locked: number[]; excluded: number[]; horizon: number } }
   | { id: number; type: 'swing'; payload: { playerId: number } }
   | { id: number; type: 'squadDist'; payload: { xi: number[]; bench: number[]; captain: number; vice: number; chip?: 'bboost' | '3xc' | null } };
 
@@ -35,6 +36,11 @@ self.onmessage = (e: MessageEvent<Msg>) => {
         const opt = az.optimize(e.data.payload.horizon ?? 6, 2);
         const plans = [...(opt.plans[0] ?? []).slice(0, 10), ...(opt.plans[1] ?? []).slice(0, 6)];
         post(id, 'result', az.moveImpacts(plans, e.data.payload.dial));
+        break;
+      }
+      case 'wildcard': {
+        const p = e.data.payload;
+        post(id, 'result', az.wildcard(p.locked, p.excluded, p.horizon));
         break;
       }
       case 'dream':

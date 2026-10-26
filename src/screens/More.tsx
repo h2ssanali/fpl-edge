@@ -3,6 +3,7 @@ import { PageHeader } from '../components/ui';
 import { IconAlert, IconBook, IconCalendar, IconChip, IconClock, IconCross, IconDiamond, IconGear, IconPhone, IconReport, IconRewind, IconStar, IconStorm, IconTag } from '../components/icons';
 
 const ITEMS = [
+  { id: 'wildcard', icon: IconStar, isNew: true },
   { id: 'hindsight', icon: IconRewind, isNew: true },
   { id: 'journal', icon: IconBook, isNew: true },
   { id: 'chaos', icon: IconStorm, isNew: true },

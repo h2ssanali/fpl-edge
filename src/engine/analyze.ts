@@ -4,6 +4,7 @@ import { buildSimSetup, simulate, summarize, squadSamples, FLAG_PLAYED, type Sim
 import { bestXI, freeTransfers, latestPicks, sellingPrices, toMembers, type SquadMember } from './squad';
 import { optimizeTransfers, hitValue, planKey, type Plan } from './optimizer';
 import { dreamTeam } from './dreamteam';
+import { buildWildcards } from './wildcard';
 import { effectiveOwnership, leagueSquads, rankSwing, simulateLeague, type LeagueSquad, type LeagueSimOutput } from './league';
 import { predictRival, rivalDNA, type RivalDNA, type RivalPrediction } from './rivals';
 import { logitShift, rivalOdds, suggestMode, winFromOdds, type Lineup, type Mode } from './strategy';
@@ -482,6 +483,12 @@ export class Analyzer {
     const p2: Phase2 = { plans: opt.plans, base: opt.base, hit: opt.hit, moveImpacts, chips, backtest, journal, report };
     if (this.analysis) this.analysis.phase2 = p2;
     return p2;
+  }
+
+  /** Wildcard builds around the user's locked players (see wildcard.ts). */
+  wildcard(locked: number[], excluded: number[], horizon: number) {
+    const xpts = this.horizon.slice(0, Math.max(1, horizon)).map((g) => this.xpByGw.get(g)!);
+    return buildWildcards({ players: this.data.players, xpts, current: this.mySquad, bank: this.myBank, locked, excluded });
   }
 
   dream(budget: number, horizon: number) {

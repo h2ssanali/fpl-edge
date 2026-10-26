@@ -153,6 +153,10 @@ export function Transfers() {
     <div>
       <PageHeader title={t('tr.title')} />
       <TransferReport />
+      <a href="#/more/wildcard" className="card" style={{ display: 'block', textDecoration: 'none', color: 'inherit', marginBottom: 14 }}>
+        <div className="row between"><b>{t('wc.ctaTitle')}</b><span className="card-link">{t('wc.cta')}</span></div>
+        <div className="small muted">{t('wc.ctaSub')}</div>
+      </a>
 
       <section className="card" style={{ marginBottom: 14 }}>
         <div className="display" style={{ fontSize: '1.15rem' }}>{t('tr.bestTitle')}</div>
