@@ -40,16 +40,18 @@
 
 **كيف يعمل؟** موقع FPL لا يسمح للمتصفحات بقراءة بياناته مباشرة، لذلك تُجلب بيانات الفريق عبر وسيط مجاني (r.jina.ai) يسمح بنحو 20 طلباً في الدقيقة لكل زائر. بيانات اللاعبين والمباريات تأتي دائماً من الملفات التي يحدّثها GitHub Actions.
 
-### (اختياري) وسيط خاص أسرع وأكثر ثباتاً — 5 دقائق ومجاني
+### خادم ARKILO على Cloudflare (رموز تُستخدم مرة واحدة + تحميل أسرع)
 
-الوسيط المجاني العام قد يتوقف أو يبطئ. لتحميل أسرع بلا حدود عملية:
+ملف واحد مجاني [`relay/worker.js`](relay/worker.js) يقوم بأمرين: يجعل كل رمز دعوة يعمل **مرة واحدة** (يُربط بأول جهاز يستخدمه ويُرفض على غيره)، ويسرّع تحميل فرق الزوار من FPL. الإعداد مرة واحدة من لوحة Cloudflare:
 
-1. أنشئ حساباً مجانياً على [Cloudflare](https://dash.cloudflare.com/sign-up) (لا يحتاج بطاقة).
-2. **Workers & Pages ← Create ← Create Worker**، سمّه مثلاً `fpl-edge-relay` ثم **Deploy**.
-3. **Edit code**، احذف المحتوى والصق محتوى الملف [`relay/worker.js`](relay/worker.js)، ثم **Deploy**.
-4. انسخ رابط الـ Worker (مثل `https://fpl-edge-relay.yourname.workers.dev`) وضعه في `config.json` في الحقل `relayUrl`.
+1. **Storage & Databases ← Workers KV ← Create** باسم `ARKILO_CODES`.
+2. **Workers & Pages ← Create ← Create Worker** باسم `arkilo` ← **Deploy**.
+3. داخل الـ Worker: **Settings ← Bindings ← Add ← KV namespace**: الاسم `CODES` والمساحة `ARKILO_CODES`.
+4. **Settings ← Variables and Secrets ← Add**: النوع **Secret**، الاسم `TOKEN_SECRET`، والقيمة نص طويل عشوائي.
+5. **Edit code**: الصق محتوى `relay/worker.js` ← **Deploy**.
+6. ضع رابط الـ Worker في `config.json` في الحقل `relayUrl` (مثل `https://arkilo.yourname.workers.dev`).
 
-الوسيط يقبل فقط عناوين FPL العامة للقراءة، والخطة المجانية تسمح بـ100,000 طلب يومياً.
+فحص سريع: فتح رابط الـ Worker يجب أن يعرض `{"ok":true,"kv":true,"secret":true}`. ولمعرفة من استخدم أي رمز: افتح مساحة `ARKILO_CODES` في Cloudflare، فكل رمز مستخدم يظهر مع وقت استخدامه.
 
 ---
 

@@ -272,7 +272,8 @@ const ar: Dict = {
   'ch.whyLabel': 'لماذا هذه الجولة؟',
   'ch.barsNote': 'الأعمدة: النقاط الإضافية المتوقعة من الشريحة في كل جولة.',
   'trr.pair': 'بِع {out} واشترِ {in}',
-  'gate.text': 'هذا الموقع خاص بالمدعوين. أدخل رمز الدعوة الذي وصلك.', 'gate.placeholder': 'رمز الدعوة', 'gate.wrong': 'الرمز غير صحيح. تأكد منه واطلب رمزاً جديداً إن لزم.', 'gate.enter': 'دخول', 'gate.hint': 'يُحفظ الرمز على جهازك، فلن يُطلب منك مرة أخرى.',
+  'gate.text': 'هذا الموقع خاص بالمدعوين. أدخل رمز الدعوة الذي وصلك.', 'gate.placeholder': 'رمز الدعوة', 'gate.wrong': 'الرمز غير صحيح. تأكد منه واطلب رمزاً جديداً إن لزم.', 'gate.enter': 'دخول', 'gate.hint': 'يُحفظ دخولك على هذا الجهاز، فلن يُطلب منك الرمز مرة أخرى.',
+  'gate.used': 'هذا الرمز استُخدم على جهاز آخر. اطلب رمزاً جديداً من صاحب الموقع.', 'gate.network': 'تعذّر الاتصال الآن. تأكد من الإنترنت وحاول مجدداً.',
   'why': 'لماذا؟',
 };
 
@@ -524,6 +525,7 @@ const en: Dict = {
   'ch.barsNote': 'Bars: the chip’s extra expected points in each gameweek.',
   'trr.pair': '{out} → {in}',
   'gate.text': 'This site is invite-only. Enter the invite code you were given.', 'gate.placeholder': 'Invite code', 'gate.wrong': 'That code isn’t valid. Check it or ask for a new one.', 'gate.enter': 'Enter', 'gate.hint': 'The code is saved on this device, so you won’t be asked again.',
+  'gate.used': 'This code has already been used on another device. Ask the site owner for a new one.', 'gate.network': 'Couldn’t connect right now. Check your internet and try again.',
   'why': 'Why?',
 };
 

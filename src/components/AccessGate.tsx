@@ -36,12 +36,47 @@ async function check(file: AccessFile, code: string): Promise<string | null> {
   return null;
 }
 
+// ---------- server mode (one-time codes via the ARKILO worker) ----------
+const WORKER = (__FPL_RELAY__ || '').replace(/\/+$/, '');
+const TOKEN = 'arkilo-token';
+
+function deviceId(): string {
+  let d = lsGet('arkilo-device');
+  if (!d) {
+    d = hex(crypto.getRandomValues(new Uint8Array(16)));
+    lsSet('arkilo-device', d);
+  }
+  return d;
+}
+
+type Redeem = { ok: true; name: string } | { ok: false; error: 'invalid' | 'used' | 'network' };
+
+async function redeemCode(code: string): Promise<Redeem> {
+  try {
+    const res = await fetch(`${WORKER}/gate/redeem`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, device: deviceId() }) });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.token) { lsSet(TOKEN, data.token); lsSet(`${KEY}-name`, data.name ?? ''); return { ok: true, name: data.name ?? '' }; }
+    return { ok: false, error: data.error === 'used' ? 'used' : 'invalid' };
+  } catch {
+    return { ok: false, error: 'network' };
+  }
+}
+
+/** true = valid, false = revoked/invalid, null = couldn't reach the server */
+async function verifyToken(token: string): Promise<boolean | null> {
+  try {
+    const res = await fetch(`${WORKER}/gate/verify`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
+    if (res.status === 401) return false;
+    return res.ok ? true : null;
+  } catch { return null; }
+}
+
 export function AccessGate({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const [state, setState] = useState<'checking' | 'open' | 'locked'>('checking');
   const [file, setFile] = useState<AccessFile | null>(null);
   const [value, setValue] = useState('');
-  const [wrong, setWrong] = useState(false);
+  const [wrong, setWrong] = useState<false | 'invalid' | 'used' | 'network'>(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -65,6 +100,25 @@ export function AccessGate({ children }: { children: ReactNode }) {
         const q = params.toString();
         history.replaceState(null, '', `${location.pathname}${q ? `?${q}` : ''}${location.hash}`);
       }
+      if (WORKER) {
+        // One-time codes: the server binds each code to the first device that redeems it.
+        const token = lsGet(TOKEN);
+        if (token && !fromUrl) {
+          const ok = await verifyToken(token);
+          if (ok !== false) { setState('open'); return; } // valid, or offline with a token
+          lsSet(TOKEN, null);
+        }
+        // A link code, or a code saved before one-time codes were switched on.
+        for (const c of [fromUrl, lsGet(KEY)]) {
+          if (!c) continue;
+          const r = await redeemCode(c);
+          if (r.ok) { lsSet(KEY, null); setState('open'); return; }
+          if (r.error === 'used') setWrong('used');
+        }
+        lsSet(KEY, null);
+        setState('locked');
+        return;
+      }
       for (const c of [fromUrl, lsGet(KEY)]) {
         if (!c) continue;
         const name = await check(f, c);
@@ -82,9 +136,15 @@ export function AccessGate({ children }: { children: ReactNode }) {
     e.preventDefault();
     if (!file) return;
     setBusy(true);
+    if (WORKER) {
+      const r = await redeemCode(value);
+      setBusy(false);
+      if (r.ok) setState('open'); else setWrong(r.error);
+      return;
+    }
     const name = await check(file, value);
     setBusy(false);
-    if (name === null) { setWrong(true); return; }
+    if (name === null) { setWrong('invalid'); return; }
     lsSet(KEY, normalize(value));
     lsSet(`${KEY}-name`, name);
     setState('open');
@@ -100,7 +160,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
         <p style={{ margin: '4px 0 14px', lineHeight: 1.7 }}>{t('gate.text')}</p>
         <input type="text" dir="ltr" autoCapitalize="characters" autoComplete="off" placeholder={t('gate.placeholder')} value={value}
           onChange={(e) => { setValue(e.target.value); setWrong(false); }} aria-label={t('gate.placeholder')} style={{ textAlign: 'center', fontSize: '1.1rem', letterSpacing: '0.08em' }} />
-        {wrong && <div className="small bad" style={{ marginTop: 8 }}>{t('gate.wrong')}</div>}
+        {wrong && <div className="small bad" style={{ marginTop: 8 }}>{t(wrong === 'used' ? 'gate.used' : wrong === 'network' ? 'gate.network' : 'gate.wrong')}</div>}
         <button className="btn primary" type="submit" disabled={busy || !value.trim()} style={{ width: '100%', marginTop: 12 }}>{t('gate.enter')}</button>
         <p className="tiny muted" style={{ margin: '12px 0 0' }}>{t('gate.hint')}</p>
       </form>
