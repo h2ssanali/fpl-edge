@@ -24,7 +24,8 @@ export function entryFor(name, code) {
 function newCode() {
   const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I confusion
   const pick = (n) => Array.from(crypto.randomBytes(n), (b) => A[b % A.length]).join('');
-  return `ARK-${pick(4)}-${pick(4)}`;
+  // 16 random chars ≈ 80 bits: the hashes are public, so codes must be far too long to guess offline.
+  return `ARK-${pick(4)}-${pick(4)}-${pick(4)}-${pick(4)}`;
 }
 
 const load = () => { try { return JSON.parse(fs.readFileSync(FILE, 'utf8')); } catch { return { codes: [] }; } };
