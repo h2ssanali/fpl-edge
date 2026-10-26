@@ -1,0 +1,101 @@
+name: Refresh FPL data
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # every 6 hours
+    - cron: '30 * * * *'    # hourly, but only acts on a deadline day (see gate)
+  workflow_dispatch:
+    inputs:
+      team_id:
+        description: 'Your FPL team ID (saved into config.json). Leave blank to keep the current setting.'
+        required: false
+        default: ''
+      league_ids:
+        description: 'Mini-league IDs, comma separated (saved into config.json). Leave blank to keep / auto-detect.'
+        required: false
+        default: ''
+  push:
+    branches: [claude/adoring-einstein-17yki4]
+    paths: [scripts/fetch-data.mjs, .github/workflows/data.yml]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: fpl-data
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      ran: ${{ steps.gate.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gate (hourly runs only on deadline day)
+        id: gate
+        run: |
+          RUN=true
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" = "30 * * * *" ]; then
+            RUN=$(node -e "
+              try {
+                const m = require('./public/data/meta.json');
+                const d = m.nextDeadline ? new Date(m.nextDeadline) : null;
+                const now = new Date();
+                const sameDay = d && d.toISOString().slice(0,10) === now.toISOString().slice(0,10);
+                const within = d && (d - now) < 24*3600e3 && (d - now) > -6*3600e3;
+                console.log(sameDay || within ? 'true' : 'false');
+              } catch { console.log('true'); }
+            ")
+          fi
+          echo "run=$RUN" >> "$GITHUB_OUTPUT"
+          echo "Gate: $RUN"
+
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          node-version: 22
+
+      - name: Save workflow inputs into config.json
+        if: steps.gate.outputs.run == 'true' && github.event_name == 'workflow_dispatch' && (inputs.team_id != '' || inputs.league_ids != '')
+        env:
+          TEAM_ID: ${{ inputs.team_id }}
+          LEAGUE_IDS: ${{ inputs.league_ids }}
+        run: |
+          node -e "
+            const fs = require('fs');
+            const cfg = JSON.parse(fs.readFileSync('config.json', 'utf8'));
+            if (process.env.TEAM_ID.trim()) cfg.teamId = process.env.TEAM_ID.trim();
+            if (process.env.LEAGUE_IDS.trim()) cfg.leagueIds = process.env.LEAGUE_IDS.split(/[\s,]+/).filter(Boolean).map(Number);
+            fs.writeFileSync('config.json', JSON.stringify(cfg, null, 2) + '\n');
+            console.log(cfg);
+          "
+
+      - name: Fetch FPL data
+        if: steps.gate.outputs.run == 'true'
+        run: node scripts/fetch-data.mjs
+
+      - name: Commit data
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          git config user.name "fpl-edge-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data config.json
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "data: refresh $(date -u +'%Y-%m-%d %H:%M UTC')"
+          for i in 1 2 3 4; do
+            git pull --rebase -X theirs origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            sleep $((i * 5))
+          done
+          exit 1
+
+  deploy:
+    needs: fetch
+    if: needs.fetch.outputs.ran == 'true' && github.ref_name == 'main'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      ref: main
