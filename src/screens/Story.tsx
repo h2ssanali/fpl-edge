@@ -48,7 +48,7 @@ function brand(c: CanvasRenderingContext2D, ctx: Ctx, label: string) {
   c.fillStyle = '#0b1a02'; c.beginPath(); c.moveTo(108, 140); c.lineTo(146, 140); c.lineTo(140, 154); c.lineTo(114, 154); c.closePath(); c.fill();
   c.fillRect(124, 154, 6, 26);
   c.fillStyle = '#fff'; c.font = '700 54px "Barlow Condensed"'; c.textAlign = 'left'; c.direction = 'ltr';
-  c.fillText('FPL', 186, 176); c.fillStyle = ACCENT; c.fillText('EDGE', 270, 176);
+  c.fillText('hassan', 186, 176); const w = c.measureText('hassan').width; c.fillStyle = ACCENT; c.fillText('ilo', 186 + w, 176);
   c.textAlign = 'right'; c.fillStyle = 'rgba(255,255,255,0.8)'; c.font = '600 40px "Barlow Condensed"';
   c.fillText(`${ctx.t('gw').toUpperCase()} ${ctx.a.gw}`, W - 90, 172);
   c.restore();
@@ -198,7 +198,7 @@ export function Story() {
   }, [kind, a, phase2, players, teams, t, lang, ready]);
   if (!a) return <Empty>—</Empty>;
   const blob = () => new Promise<Blob | null>((res) => canvasRef.current?.toBlob(res, 'image/png'));
-  const filename = `fpl-edge-gw${a.gw}-${kind}.png`;
+  const filename = `hassanilo-gw${a.gw}-${kind}.png`;
   const download = async () => {
     const b = await blob(); if (!b) return;
     const url = URL.createObjectURL(b);
@@ -209,7 +209,7 @@ export function Story() {
     const b = await blob(); if (!b) return;
     const file = new File([b], filename, { type: 'image/png' });
     if (navigator.canShare?.({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: 'FPL Edge' }); } catch { /* cancelled */ }
+      try { await navigator.share({ files: [file], title: 'hassanilo' }); } catch { /* cancelled */ }
     } else download();
   };
   return (

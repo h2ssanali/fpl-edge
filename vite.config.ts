@@ -17,8 +17,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icons/*.png', 'icons/*.svg'],
       manifest: {
-        name: 'FPL Edge',
-        short_name: 'FPL Edge',
+        name: 'hassanilo',
+        short_name: 'hassanilo',
         description: 'مساعد فانتازي الدوري الإنجليزي — توقعات ومحاكاة واستراتيجية دوري مصغر',
         lang: 'ar',
         dir: 'rtl',
