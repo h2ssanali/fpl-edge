@@ -14,9 +14,6 @@ on:
         description: 'Mini-league IDs, comma separated (saved into config.json). Leave blank to keep / auto-detect.'
         required: false
         default: ''
-  push:
-    branches: [claude/adoring-einstein-17yki4]
-    paths: [scripts/fetch-data.mjs, .github/workflows/data.yml]
 
 permissions:
   contents: write
