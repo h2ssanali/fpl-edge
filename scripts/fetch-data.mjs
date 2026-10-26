@@ -236,7 +236,7 @@ function chooseRivals(standings, myId) {
 }
 
 // ---------- top 10k sample ----------
-async function fetchTopSample(gw) {
+async function fetchTopSample(gw, deadlinePassed) {
   // Sample the overall league across ranks 1..10,000 for an estimate of the
   // top-10k average score, effective ownership and captaincy.
   const pages = [1, 21, 41, 61, 81, 101, 121, 141, 161, 181, 200];
@@ -247,7 +247,13 @@ async function fetchTopSample(gw) {
   const sample = [];
   for (const p of pages) {
     const pageRows = rows.filter((r) => r.rank > (p - 1) * 50 && r.rank <= p * 50);
-    sample.push(...pageRows.filter((_, i) => i % 10 === 0));
+    sample.push(...pageRows.filter((_, i) => i % 5 === 0));
+  }
+  // Picks are frozen once the deadline passes, so sample them only once per GW.
+  const prev = readJson(`top/${gw}.json`, null);
+  const avgNow = round(rows.reduce((s, r) => s + (r.event_total || 0), 0) / rows.length, 1);
+  if (prev && prev.sampled >= 40 && deadlinePassed) {
+    return { ...prev, avg: avgNow, rows: rows.length, updated: new Date().toISOString() };
   }
   const counts = {};
   const caps = {};
@@ -264,8 +270,7 @@ async function fetchTopSample(gw) {
   for (const [k, v] of Object.entries(counts)) eo[k] = round((v / Math.max(1, n)) * 100, 1);
   const cap = {};
   for (const [k, v] of Object.entries(caps)) cap[k] = round((v / Math.max(1, n)) * 100, 1);
-  const avg = rows.reduce((s, r) => s + (r.event_total || 0), 0) / rows.length;
-  return { gw, sampled: n, rows: rows.length, avg: round(avg, 1), eo, cap, updated: new Date().toISOString() };
+  return { gw, sampled: n, rows: rows.length, avg: avgNow, eo, cap, updated: new Date().toISOString() };
 }
 
 // ---------- price history ----------
@@ -413,7 +418,7 @@ async function main() {
   // Top-10k sample for the latest active GW (accumulates per GW over the season).
   const sampleGw = current?.id;
   if (sampleGw) {
-    const top = await fetchTopSample(sampleGw);
+    const top = await fetchTopSample(sampleGw, !!current && new Date(current.deadline) < new Date());
     if (top) writeJson(`top/${sampleGw}.json`, top);
   }
   const topIndex = fs.existsSync(path.join(OUT, 'top'))
