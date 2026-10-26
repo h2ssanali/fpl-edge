@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useI18n } from '../i18n';
 import { useStore } from '../store';
 import { Empty, MiniShirt, PageHeader, PName, Reasons, Seg, usePlayer } from '../components/ui';
-import { CountUp, DistChart } from '../components/viz';
+import { CountUp, RangeBar } from '../components/viz';
 import type { CaptainOption } from '../engine/analyze';
 
 type Mode = 'safe' | 'upside';
@@ -27,12 +27,14 @@ export function Captain() {
   const me = a?.me;
   if (!a || !me) return <><PageHeader title={t('cap.title')} /><Empty>{t('tr.noSquad')}</Empty></>;
   const options = [...me.captains].sort((x, y) => score(y, mode) - score(x, mode));
+  const scale = Math.max(...options.map((c) => c.capDist.p90), 10);
   return (
     <div>
       <PageHeader title={t('cap.title')} sub={t('cap.sub')} />
       <Seg full value={mode} onChange={setMode} options={[{ value: 'safe', label: t('cap.safe') }, { value: 'upside', label: t('cap.upside') }]} />
       <div className={`card ${mode === 'upside' ? 'accent' : ''}`} style={{ margin: '10px 0 14px', padding: 12 }} key={`hint-${mode}`}>
         <div className="small">{mode === 'safe' ? t('cap.safeExplain') : t('cap.upsideExplain')}</div>
+        <div className="tiny muted" style={{ marginTop: 6, lineHeight: 1.7 }}>{t('cap.howRead')}</div>
       </div>
       <section className="card accent glass" style={{ marginBottom: 14 }}>
         <div className="display" style={{ fontSize: '1.1rem' }}>{t('cap.whyTitle', { gw: a.gw })}</div>
@@ -76,24 +78,18 @@ export function Captain() {
                   <div className="tiny muted">{t('cap.mean')}</div>
                 </div>
               </div>
-              <div style={{ marginTop: 10 }}><DistChart dist={c.capDist} height={70} /></div>
-              {mode === 'safe' ? (
-                <div className="kv" style={{ marginTop: 10 }}>
-                  <div><div className="k">{t('p10')}</div><div className="v">{fmt(c.capDist.p10, 0)}</div></div>
-                  <div><div className="k">{t('median')}</div><div className="v">{fmt(c.capDist.median, 0)}</div></div>
-                  <div><div className="k">{t('pBlank')}</div><div className="v">{pct(c.dist.pBlank)}</div></div>
-                </div>
-              ) : (
-                <div className="kv" style={{ marginTop: 10 }}>
-                  <div><div className="k">{t('p90')}</div><div className="v">{fmt(c.capDist.p90, 0)}</div></div>
-                  <div><div className="k">{t('p10plus')}</div><div className="v">{pct(c.dist.p10plus)}</div></div>
-                  <div><div className="k">{t('cap.othersCap')}</div><div className={`v ${others < 40 ? 'good' : others > 120 ? 'bad' : ''}`}>{fmt(Math.min(100, others / 2), 0)}%</div></div>
-                </div>
-              )}
-              <div className="row wrap small muted" style={{ marginTop: 8, gap: 12 }}>
-                <span>{t('pGoal')}: <b className="num">{pct(c.dist.pGoal)}</b></span>
-                <span>{t('pAssist')}: <b className="num">{pct(c.dist.pAssist)}</b></span>
-                {c.dist.pCS > 0.05 && <span>{t('pCS')}: <b className="num">{pct(c.dist.pCS)}</b></span>}
+              <RangeBar low={c.capDist.p10} mid={c.capDist.median} high={c.capDist.p90} scale={scale} />
+              <div className="facts">
+                <span className="fact">{t('cap.fGoal')} <b>{pct(c.dist.pGoal)}</b></span>
+                <span className="fact">{t('cap.fAssist')} <b>{pct(c.dist.pAssist)}</b></span>
+                {c.dist.pCS > 0.05 && <span className="fact">{t('cap.fCS')} <b>{pct(c.dist.pCS)}</b></span>}
+                <span className="fact">{t('cap.fStart')} <b>{pct(ps?.pStart ?? 0)}</b></span>
+                {mode === 'safe'
+                  ? <span className="fact">{t('cap.fBlank')} <b>{pct(c.dist.pBlank)}</b></span>
+                  : <>
+                      <span className="fact">{t('cap.fHaul')} <b>{pct(c.dist.p10plus)}</b></span>
+                      <span className={`fact ${others < 40 ? 'good' : others > 120 ? 'bad' : ''}`}>{t('cap.othersCap')} <b>{fmt(Math.min(100, others / 2), 0)}%</b></span>
+                    </>}
               </div>
               {ps && <Reasons reasons={ps.reasons} max={5} />}
             </article>

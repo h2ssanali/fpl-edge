@@ -405,3 +405,16 @@ table.data tr.me td { background: var(--accent-soft); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
 }
+
+/* Points range (bad week · typical · great week) */
+.range { margin-top: 10px; }
+.range-track { position: relative; height: 10px; border-radius: 99px; background: var(--surface-2); }
+.range-fill { position: absolute; top: 0; bottom: 0; border-radius: 99px; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 35%, transparent), var(--accent)); }
+.range-dot { position: absolute; top: 50%; width: 16px; height: 16px; margin-left: -8px; transform: translateY(-50%); border-radius: 50%; background: var(--text); border: 3px solid var(--accent); }
+.range-labels { display: grid; grid-template-columns: 1fr 1fr 1fr; margin-top: 6px; direction: ltr; }
+.range-labels > div:first-child { text-align: left; }
+.range-labels > div:last-child { text-align: right; }
+.range-v { font-weight: 700; font-size: 1.05rem; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.fact { background: var(--surface-2); border-radius: 10px; padding: 4px 10px; font-size: .82rem; }
+.fact b { font-family: var(--font-num); }

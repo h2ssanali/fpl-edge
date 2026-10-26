@@ -1,7 +1,7 @@
 import { useI18n } from '../i18n';
 import { useStore } from '../store';
-import { Countdown, Empty, MiniShirt, PName, Reasons } from '../components/ui';
-import { CountUp, DistChart, Gauge } from '../components/viz';
+import { Countdown, Empty, MiniShirt, PName, Reasons, usePlayer } from '../components/ui';
+import { CountUp, DistChart } from '../components/viz';
 import { IconArrowDown, IconArrowUp, IconClock, IconPhone } from '../components/icons';
 import { RankCard } from '../components/MyRank';
 import { WhatIf } from '../components/WhatIf';
@@ -9,13 +9,14 @@ import { WhatIf } from '../components/WhatIf';
 export function Home() {
   const { t, fmt, pct } = useI18n();
   const { analysis: a, phase2, raw } = useStore();
+  const pl = usePlayer();
   if (!a || !raw) return null;
   const me = a.me;
   const cap = me?.captains.find((c) => c.id === me.edge.captain) ?? me?.captains[0];
   const topPlan = phase2?.plans[0]?.[0];
-  const chaos = a.chaos[0];
-  const league = a.league;
-  const myRow = league?.standings.find((s) => s.isMe);
+  // The next two captain options (by expected points), so the choice is visible at a glance.
+  const alts = (me?.captains ?? []).filter((c) => c.id !== cap?.id).sort((x, y) => y.capDist.mean - x.capDist.mean).slice(0, 2);
+  const fxText = (id: number) => (a.players[id]?.fx ?? []).map((f) => `${pl.teamShort(f.opp)} (${t(f.home ? 'H' : 'A')})`).join(' + ') || t('r.blank');
   const updated = new Date(raw.meta.updated);
   return (
     <div className="stack">
@@ -36,33 +37,48 @@ export function Home() {
       <RankCard />
       <WhatIf />
 
-      <div className="grid-2">
-        <a href="#/captain" className="card accent" style={{ textDecoration: 'none', color: 'inherit' }}>
-          <div className="card-label">{t('home.captainGw', { gw: a.gw })}</div>
-          {cap ? (
-            <>
-              <div className="row" style={{ marginTop: 8 }}>
+      <a href="#/captain" className="card accent" style={{ textDecoration: 'none', color: 'inherit' }}>
+        <div className="card-head"><span className="card-label">{t('home.captainGw', { gw: a.gw })}</span><span className="card-link">{t('home.seeAll')}</span></div>
+        {cap ? (
+          <>
+            <div className="row between" style={{ marginTop: 6, alignItems: 'center' }}>
+              <div className="row" style={{ minWidth: 0 }}>
                 <MiniShirt id={cap.id} />
-                <div className="name" style={{ fontSize: '1.05rem' }}><PName id={cap.id} /></div>
+                <div style={{ minWidth: 0 }}>
+                  <div className="name" style={{ fontSize: '1.1rem' }}><PName id={cap.id} /> <span className="pill accent">C</span></div>
+                  <div className="sub">{t('home.vs', { fx: fxText(cap.id) })}</div>
+                </div>
               </div>
-              <div className="row" style={{ alignItems: 'baseline', gap: 6, marginTop: 6 }}>
+              <div style={{ textAlign: 'end' }}>
                 <CountUp value={cap.capDist.mean} decimals={1} className="big-num accent-text" />
-                <span className="small muted">{t('xp')}</span>
+                <div className="tiny muted">{t('home.capPts')}</div>
               </div>
-              <div className="tiny muted">{t('p10plus')} {pct(cap.dist.p10plus)} · {t('pGoal')} {pct(cap.dist.pGoal)}</div>
-            </>
-          ) : <Empty>—</Empty>}
-        </a>
-        <a href={league ? '#/league' : '#/more/settings'} className="card" style={{ textDecoration: 'none', color: 'inherit' }}>
-          <div className="card-label">{t('home.winProb')}</div>
-          {league && myRow ? (
-            <>
-              <Gauge value={league.pWin} label={`${t('home.leagueRank')}: ${myRow.rank}`} />
-              <div className="tiny muted" style={{ textAlign: 'center' }}>{t(`lg.mode.${league.mode.mode}`)}</div>
-            </>
-          ) : <Empty>—</Empty>}
-        </a>
-      </div>
+            </div>
+            <div className="small" style={{ marginTop: 8, lineHeight: 1.7 }}>
+              {t('home.capWhy', { goal: pct(cap.dist.pGoal), start: pct(a.players[cap.id]?.pStart ?? 0), low: fmt(cap.capDist.p10, 0), high: fmt(cap.capDist.p90, 0) })}
+            </div>
+            {alts.length > 0 && (
+              <div className="list" style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 4 }}>
+                <div className="tiny muted" style={{ padding: '4px 0' }}>{t('home.capAlts')}</div>
+                {alts.map((c, i) => (
+                  <div key={c.id} className="list-row" style={{ padding: '6px 0' }}>
+                    <span className="num faint" style={{ width: 16 }}>{i + 2}</span>
+                    <MiniShirt id={c.id} />
+                    <div className="grow" style={{ minWidth: 0 }}>
+                      <div className="name"><PName id={c.id} /></div>
+                      <div className="sub">{t('home.vs', { fx: fxText(c.id) })}</div>
+                    </div>
+                    <div style={{ textAlign: 'end' }}>
+                      <div className="num" style={{ fontWeight: 700 }}>{fmt(c.capDist.mean)}</div>
+                      <div className="tiny muted">{t('home.ptsShort')}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ) : <Empty>—</Empty>}
+      </a>
 
       <a href="#/transfers" className="card" style={{ textDecoration: 'none', color: 'inherit' }}>
         <div className="card-head"><span className="card-label">{t('home.transferGw', { gw: a.gw })}</span><span className="card-link">{t('home.seeAll')}</span></div>
@@ -85,26 +101,19 @@ export function Home() {
         {topPlan && a.players[topPlan.moves[0].in] && <Reasons reasons={a.players[topPlan.moves[0].in].reasons} max={4} />}
       </a>
 
-      <div className="grid-2">
-        <a href="#/more/chaos" className="card" style={{ textDecoration: 'none', color: 'inherit' }}>
-          <div className="card-label">{t('home.chaosGw', { gw: a.gw })}</div>
-          {chaos && <Gauge value={chaos.index / 100} display={String(chaos.index)} label={t(`cx.${chaos.label}`)} color={chaos.index >= 65 ? 'var(--bad)' : chaos.index < 35 ? 'var(--good)' : 'var(--warn)'} />}
-          {chaos && <div className="tiny muted" style={{ textAlign: 'center' }}>{t(`cx.${chaos.advice}`)}</div>}
-        </a>
+      {me && (
         <div className="card">
           <div className="card-label">{t('home.squadGw', { gw: a.gw })}</div>
-          {me ? (
-            <>
-              <div className="row" style={{ alignItems: 'baseline', gap: 6, marginTop: 6 }}>
-                <CountUp value={me.squadDist.mean} decimals={0} className="big-num" />
-                <span className="small muted">{t('xp')}</span>
-              </div>
-              <div className="tiny muted num">{fmt(me.squadDist.p10, 0)}–{fmt(me.squadDist.p90, 0)}</div>
-              <DistChart dist={me.squadDist} height={40} compact />
-            </>
-          ) : <Empty>—</Empty>}
+          <div className="row between" style={{ alignItems: 'baseline', marginTop: 6 }}>
+            <div className="row" style={{ alignItems: 'baseline', gap: 6 }}>
+              <CountUp value={me.squadDist.mean} decimals={0} className="big-num" />
+              <span className="small muted">{t('xp')}</span>
+            </div>
+            <div className="small muted">{t('home.squadRange', { low: fmt(me.squadDist.p10, 0), high: fmt(me.squadDist.p90, 0) })}</div>
+          </div>
+          <DistChart dist={me.squadDist} height={40} compact />
         </div>
-      </div>
+      )}
 
       {phase2?.report && (
         <a href="#/more/report" className="card" style={{ textDecoration: 'none', color: 'inherit' }}>

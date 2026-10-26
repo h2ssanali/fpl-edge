@@ -70,5 +70,15 @@ describe.skipIf(!has)('wildcard builder', () => {
     }
     // The "best" option has the highest true expected points.
     expect(res.options[0].value).toBeGreaterThanOrEqual(Math.max(...res.options.map((o) => o.value)) - 0.01);
+    // Seeded builds vary but stay close to the best, and "avoid" steers away from the last squad.
+    const ids = (o: { squad: { id: number }[] }) => new Set(o.squad.map((m) => m.id));
+    const a1 = az.wildcard([palmer.id], [], 6, 1).options[0];
+    const a2 = az.wildcard([palmer.id], [], 6, 2, [...ids(a1)].filter((id) => id !== palmer.id)).options[0];
+    const overlap = [...ids(a2)].filter((id) => ids(a1).has(id)).length;
+    console.log('wildcard variety', a1.value.toFixed(1), a2.value.toFixed(1), 'shared', overlap);
+    expect(overlap).toBeLessThan(15);
+    expect(a1.value).toBeGreaterThan(res.options[0].value * 0.93);
+    expect(a2.value).toBeGreaterThan(res.options[0].value * 0.9);
+    expect(a2.squad.some((m) => m.id === palmer.id)).toBe(true);
   }, 60000);
 });

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { searchKey } from '../data/names';
 import { useI18n, safeGet, safeSet } from '../i18n';
 import { useStore } from '../store';
 import { Empty, MiniShirt, Money, PageHeader, PName, Reasons, Seg, usePlayer } from '../components/ui';
@@ -124,14 +125,14 @@ export function Transfers() {
   const outPos = selectedOut ? players.get(selectedOut)?.pos : null;
   const filterPos = (outPos ?? posFilter) as Pos | 0;
   const remainingXp = (id: number) => gws.slice(gi).reduce((s, _, k) => s + xp(id, gi + k), 0);
-  const q = query.trim().toLowerCase();
+  const q = searchKey(query.trim());
   // When a squad player is selected: best affordable replacements, ranked by the gain over him.
   const outMember = selectedOut ? cur.squad.find((m) => m.id === selectedOut) : null;
   const budgetFor = outMember ? cur.bank + outMember.sell : Infinity;
   const teamCount = (team: number) => cur.squad.filter((m) => m.team === team && m.id !== selectedOut).length;
   const outXp = selectedOut ? remainingXp(selectedOut) : 0;
   const candidates = [...players.values()]
-    .filter((p) => !squadIds.has(p.id) && p.status !== 'u' && p.canSelect && (!filterPos || p.pos === filterPos) && (!q || p.web.toLowerCase().includes(q) || p.second.toLowerCase().includes(q)))
+    .filter((p) => !squadIds.has(p.id) && p.status !== 'u' && p.canSelect && (!filterPos || p.pos === filterPos) && (!q || searchKey(p.web).includes(q) || searchKey(`${p.first} ${p.second}`).includes(q)))
     .filter((p) => !outMember || q || (p.cost <= budgetFor && teamCount(p.team) < 3))
     .sort((x, y) => remainingXp(y.id) - remainingXp(x.id))
     .slice(0, 20);

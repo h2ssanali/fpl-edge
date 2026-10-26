@@ -35,7 +35,27 @@ export interface WildcardInput {
   locked: number[];
   excluded: number[];
   teamLimit?: number;
+  /** Random seed: each build nudges the projections a little so squads vary between runs and users. */
+  seed?: number;
+  /** Players from the previous build to steer away from ("show me something different"). */
+  avoid?: number[];
 }
+
+/** Small deterministic PRNG (mulberry32). */
+function rng(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Projections are estimates, so near-equal players are interchangeable: vary them per build. */
+const NOISE = 0.08;
+const AVOID_PENALTY = 0.94;
 
 export interface LockCheck { ok: boolean; problem: 'position' | 'team' | 'budget' | null; pos?: Pos; team?: number }
 
@@ -68,18 +88,31 @@ export function buildWildcards(input: WildcardInput): { budget: number; options:
   const excluded = new Set(input.excluded);
   const locked = input.locked.filter((id) => priced.has(id) && !excluded.has(id));
 
+  // Per-player nudge, shared across GWs and variants so each build is internally consistent.
+  const nudge = new Map<number, number>();
+  if (input.seed != null) {
+    const r = rng(input.seed);
+    const avoid = new Set(input.avoid ?? []);
+    for (const id of [...input.players.keys()].sort((x, y) => x - y)) {
+      if (locked.includes(id)) continue;
+      nudge.set(id, (1 + (r() * 2 - 1) * NOISE) * (avoid.has(id) ? AVOID_PENALTY : 1));
+    }
+  }
+  const tilt = (m: Map<number, number>) => (nudge.size ? new Map([...m].map(([id, x]) => [id, x * (nudge.get(id) ?? 1)])) : m);
+  const base = input.xpts.map(tilt);
+
   const variants: { kind: WildcardKind; xpts: Map<number, number>[] }[] = [
-    { kind: 'best', xpts: input.xpts },
+    { kind: 'best', xpts: base },
     {
       kind: 'differential',
-      xpts: input.xpts.map((m) => new Map([...m].map(([id, x]) => {
+      xpts: base.map((m) => new Map([...m].map(([id, x]) => {
         const sel = input.players.get(id)?.sel ?? 0;
         return [id, locked.includes(id) ? x : x * (1 - Math.min(60, sel) / 120)];
       }))),
     },
     {
       kind: 'keep',
-      xpts: input.xpts.map((m) => new Map([...m].map(([id, x]) => [id, x + (owned.has(id) ? 0.45 : 0)]))),
+      xpts: base.map((m) => new Map([...m].map(([id, x]) => [id, x + (owned.has(id) ? 0.45 : 0)]))),
     },
   ];
   if (!owned.size) variants.pop(); // nothing to keep without a current squad
@@ -105,6 +138,12 @@ export function buildWildcards(input: WildcardInput): { budget: number; options:
       avgOwnership: squad.reduce((s, m) => s + (input.players.get(m.id)?.sel ?? 0), 0) / squad.length,
       sameAs: same ? same.kind : null,
     });
+  }
+  // With the random nudge another build can edge out "best" on true points: keep the label honest.
+  const top = options.reduce((m, o) => (o.value > m.value ? o : m), options[0]);
+  if (top && top.kind !== 'best') {
+    options[0] = { ...top, kind: 'best', sameAs: null };
+    top.sameAs = 'best';
   }
   return { budget, options };
 }

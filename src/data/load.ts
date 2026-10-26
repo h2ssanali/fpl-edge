@@ -1,4 +1,5 @@
 import type { RawData } from '../engine/analyze';
+import { plainName } from './names';
 import type { Core, Fixture, LeagueFile, LiveFile, ManagerFile, Meta, PerGwHistory, Snapshot, TopSample } from '../engine/types';
 
 const BASE = `${import.meta.env.BASE_URL}data/`;
@@ -18,6 +19,8 @@ async function getJson<T>(path: string, optional = false): Promise<T | null> {
 export async function loadAll(onProgress?: (p: number) => void): Promise<RawData> {
   const meta = (await getJson<Meta>('meta.json'))!;
   const [core, fixtures] = await Promise.all([getJson<Core>('core.json'), getJson<Fixture[]>('fixtures.json')]);
+  // Show every player name in plain letters (no accents) everywhere in the app.
+  for (const p of core!.players) { p.web = plainName(p.web); p.first = plainName(p.first); p.second = plainName(p.second); }
   onProgress?.(0.3);
   const live = (await Promise.all(meta.liveGws.map((g) => getJson<LiveFile>(`live/${g}.json`, true)))).filter((x): x is LiveFile => !!x);
   onProgress?.(0.55);

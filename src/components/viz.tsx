@@ -92,6 +92,28 @@ export function Gauge({ value, label, color = 'var(--accent)', display }: { valu
   );
 }
 
+/**
+ * Plain-language points range: a bad week, a typical week and a great week
+ * (10th percentile, median, 90th percentile), drawn on a shared scale.
+ */
+export function RangeBar({ low, mid, high, scale }: { low: number; mid: number; high: number; scale: number }) {
+  const { t, fmt } = useI18n();
+  const x = (v: number) => `${Math.max(0, Math.min(1, v / Math.max(1, scale))) * 100}%`;
+  return (
+    <div className="range" dir="ltr">
+      <div className="range-track">
+        <i className="range-fill" style={{ left: x(low), width: `calc(${x(high)} - ${x(low)})` }} />
+        <b className="range-dot" style={{ left: x(mid) }} />
+      </div>
+      <div className="range-labels" dir="auto">
+        <div><div className="num range-v">{fmt(low, 0)}</div><div className="tiny muted">{t('rng.bad')}</div></div>
+        <div style={{ textAlign: 'center' }}><div className="num range-v accent-text">{fmt(mid, 0)}</div><div className="tiny muted">{t('rng.typical')}</div></div>
+        <div style={{ textAlign: 'end' }}><div className="num range-v">{fmt(high, 0)}</div><div className="tiny muted">{t('rng.great')}</div></div>
+      </div>
+    </div>
+  );
+}
+
 export function Bar({ value, color }: { value: number; color?: string }) {
   return <div className="bar"><i style={{ width: `${Math.max(0, Math.min(1, value)) * 100}%`, background: color }} /></div>;
 }

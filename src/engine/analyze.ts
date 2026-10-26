@@ -486,9 +486,9 @@ export class Analyzer {
   }
 
   /** Wildcard builds around the user's locked players (see wildcard.ts). */
-  wildcard(locked: number[], excluded: number[], horizon: number) {
+  wildcard(locked: number[], excluded: number[], horizon: number, seed?: number, avoid?: number[]) {
     const xpts = this.horizon.slice(0, Math.max(1, horizon)).map((g) => this.xpByGw.get(g)!);
-    return buildWildcards({ players: this.data.players, xpts, current: this.mySquad, bank: this.myBank, locked, excluded });
+    return buildWildcards({ players: this.data.players, xpts, current: this.mySquad, bank: this.myBank, locked, excluded, seed, avoid });
   }
 
   dream(budget: number, horizon: number) {

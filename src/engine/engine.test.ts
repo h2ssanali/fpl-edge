@@ -343,3 +343,14 @@ describe.skipIf(!hasData)('real data smoke test', () => {
     expect(validSquad(dream.squad)).toBe(true);
   });
 });
+
+describe('plain player names', () => {
+  it('strips accents and special letters', async () => {
+    const { plainName, searchKey } = await import('../data/names');
+    expect(plainName('Ødegaard')).toBe('Odegaard');
+    expect(plainName('Gyökeres')).toBe('Gyokeres');
+    expect(plainName('Petrović')).toBe('Petrovic');
+    expect(plainName('Enes Ünal')).toBe('Enes Unal');
+    expect(searchKey('A.García')).toBe('agarcia');
+  });
+});

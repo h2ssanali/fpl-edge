@@ -9,7 +9,7 @@ type Msg =
   | { id: number; type: 'optimize'; payload: { horizon: number; maxMoves: number; exclude?: number[] } }
   | { id: number; type: 'impacts'; payload: { dial: number; horizon?: number } }
   | { id: number; type: 'dream'; payload: { budget: number; horizon: number } }
-  | { id: number; type: 'wildcard'; payload: { locked: number[]; excluded: number[]; horizon: number } }
+  | { id: number; type: 'wildcard'; payload: { locked: number[]; excluded: number[]; horizon: number; seed?: number; avoid?: number[] } }
   | { id: number; type: 'swing'; payload: { playerId: number } }
   | { id: number; type: 'squadDist'; payload: { xi: number[]; bench: number[]; captain: number; vice: number; chip?: 'bboost' | '3xc' | null } };
 
@@ -40,7 +40,7 @@ self.onmessage = (e: MessageEvent<Msg>) => {
       }
       case 'wildcard': {
         const p = e.data.payload;
-        post(id, 'result', az.wildcard(p.locked, p.excluded, p.horizon));
+        post(id, 'result', az.wildcard(p.locked, p.excluded, p.horizon, p.seed, p.avoid));
         break;
       }
       case 'dream':

@@ -6,6 +6,7 @@ import { Pitch } from '../components/Pitch';
 import { IconArrowDown, IconArrowUp } from '../components/icons';
 import { checkLocks, type WildcardKind, type WildcardOption } from '../engine/wildcard';
 import type { Pos } from '../engine/types';
+import { searchKey } from '../data/names';
 
 interface Result { budget: number; options: WildcardOption[] }
 
@@ -32,19 +33,22 @@ export function Wildcard() {
   }, [players]);
   const check = checkLocks(players, locked, budget, cheapest);
   const xpN = (id: number) => (a?.players[id]?.xp ?? []).slice(0, horizon).reduce((s, x) => s + x, 0);
-  const q = query.trim().toLowerCase();
+  const q = searchKey(query.trim());
   const results = q.length < 2 ? [] : [...players.values()]
-    .filter((p) => p.canSelect && p.status !== 'u' && (p.web.toLowerCase().includes(q) || p.second.toLowerCase().includes(q) || p.first.toLowerCase().includes(q)))
+    .filter((p) => p.canSelect && p.status !== 'u' && [p.web, p.second, p.first, `${p.first} ${p.second}`].some((n) => searchKey(n).includes(q)))
     .sort((x, y) => xpN(y.id) - xpN(x.id)).slice(0, 8);
 
   if (!a) return null;
   const from = a.horizon[0];
   const to = a.horizon[Math.min(horizon, a.horizon.length) - 1];
 
-  const build = async () => {
+  // A fresh random seed each time, so two people (or two tries) don't get the exact same squad.
+  const build = async (another = false) => {
     setBusy(true);
     try {
-      const r = await request<Result>('wildcard', { locked, excluded, horizon });
+      const avoid = another && res ? [...new Set(res.options.flatMap((o) => o.squad.map((m) => m.id)))].filter((id) => !locked.includes(id)) : [];
+      const seed = Math.floor(Math.random() * 2 ** 31);
+      const r = await request<Result>('wildcard', { locked, excluded, horizon, seed, avoid });
       setRes(r);
       setKind('best');
     } finally { setBusy(false); }
@@ -108,7 +112,7 @@ export function Wildcard() {
 
       <h2 className="section-title">{t('wc.step2')}</h2>
       <Seg full value={horizon} onChange={(h) => { setHorizon(h); setRes(null); }} options={[3, 6, 8].map((h) => ({ value: h, label: t('wc.nGws', { n: h }) }))} />
-      <button className="btn primary" style={{ width: '100%', marginTop: 12 }} disabled={busy || !check.ok} onClick={build}>{busy ? t('wc.building') : t('wc.build')}</button>
+      <button className="btn primary" style={{ width: '100%', marginTop: 12 }} disabled={busy || !check.ok} onClick={() => build()}>{busy ? t('wc.building') : t('wc.build')}</button>
 
       {res && opt && (
         <>
@@ -129,6 +133,8 @@ export function Wildcard() {
               </tbody>
             </table>
           </div>
+          <button className="btn small" style={{ width: '100%', marginTop: 8 }} disabled={busy} onClick={() => build(true)}>{busy ? t('wc.building') : t('wc.another')}</button>
+          <p className="tiny muted" style={{ margin: '4px 2px 0' }}>{t('wc.anotherNote')}</p>
           <div style={{ marginTop: 10 }}>
             <Seg full value={kind} onChange={setKind} options={res.options.map((o) => ({ value: o.kind, label: t(`wc.kind.${o.kind}`) }))} />
           </div>
