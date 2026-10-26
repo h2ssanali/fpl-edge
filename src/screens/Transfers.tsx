@@ -124,10 +124,21 @@ export function Transfers() {
   const filterPos = (outPos ?? posFilter) as Pos | 0;
   const remainingXp = (id: number) => gws.slice(gi).reduce((s, _, k) => s + xp(id, gi + k), 0);
   const q = query.trim().toLowerCase();
+  // When a squad player is selected: best affordable replacements, ranked by the gain over him.
+  const outMember = selectedOut ? cur.squad.find((m) => m.id === selectedOut) : null;
+  const budgetFor = outMember ? cur.bank + outMember.sell : Infinity;
+  const teamCount = (team: number) => cur.squad.filter((m) => m.team === team && m.id !== selectedOut).length;
+  const outXp = selectedOut ? remainingXp(selectedOut) : 0;
   const candidates = [...players.values()]
     .filter((p) => !squadIds.has(p.id) && p.status !== 'u' && p.canSelect && (!filterPos || p.pos === filterPos) && (!q || p.web.toLowerCase().includes(q) || p.second.toLowerCase().includes(q)))
+    .filter((p) => !outMember || q || (p.cost <= budgetFor && teamCount(p.team) < 3))
     .sort((x, y) => remainingXp(y.id) - remainingXp(x.id))
     .slice(0, 20);
+  const suggestions = (phase2?.plans[0] ?? []).filter((p) => p.gain > 0.5).slice(0, 4);
+  const applyMoves = (moves: { out: number; in: number }[]) => {
+    setGi(0);
+    setTransfers((ts) => [...ts.filter((x) => x.gw !== gws[0]), ...moves.map((m) => ({ gw: gws[0], out: m.out, in: m.in }))]);
+  };
 
   const runOpt = async () => {
     setOptBusy(true);
@@ -139,14 +150,45 @@ export function Transfers() {
 
   return (
     <div>
-      <PageHeader title={t('tr.title')} sub={t('tr.sub')} />
+      <PageHeader title={t('tr.title')} />
+
+      <section className="card accent glass" style={{ marginBottom: 14 }}>
+        <div className="display" style={{ fontSize: '1.15rem' }}>{t('tr.bestTitle')}</div>
+        <p className="small muted" style={{ margin: '4px 0 8px' }}>{t('tr.bestSub', { ft: me.ft, bank: (me.bank / 10).toFixed(1) })}</p>
+        {!phase2 ? <div className="skeleton" style={{ height: 70 }} /> : suggestions.length === 0 ? <div className="small">{t('home.noTransfer')}</div> : (
+          <div className="list">
+            {suggestions.map((pln, i) => {
+              const m = pln.moves[0];
+              return (
+                <div key={i} className="list-row" style={{ alignItems: 'flex-start' }}>
+                  <div className="grow" style={{ minWidth: 0 }}>
+                    <div className="move" style={{ fontSize: '1rem' }}>
+                      <IconArrowDown width={16} className="out" /><span className="out"><PName id={m.out} /></span>
+                      <IconArrowUp width={16} className="in" /><span className="in"><PName id={m.in} withTeam /></span>
+                    </div>
+                    <div className="tiny muted">{t('tr.bankAfter')}: <Money v={pln.bankAfter} /></div>
+                    {i === 0 && a.players[m.in] && <Reasons reasons={a.players[m.in].reasons} max={4} />}
+                  </div>
+                  <div style={{ textAlign: 'end', minWidth: 78 }}>
+                    <div className="num good" style={{ fontWeight: 700, fontSize: '1.2rem' }}>+{fmt(pln.gain)}</div>
+                    <div className="tiny muted">{t('tr.pts6')}</div>
+                    <button className="btn small" style={{ marginTop: 4 }} onClick={() => applyMoves(pln.moves)}>{t('tr.apply')}</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <p className="tiny muted" style={{ margin: '8px 0 0' }}>{t('tr.tapHint')}</p>
+      </section>
       <div className="kv">
         <div><div className="k">{t('tr.bank')}</div><div className={`v ${cur.bank < 0 ? 'bad' : ''}`}><Money v={cur.bank} /></div></div>
         <div><div className="k">{t('tr.ft')}</div><div className="v">{cur.ftAvailable}{cur.hits > 0 && <span className="bad small"> −{cur.hits}</span>}</div></div>
         <div><div className="k">{t('tr.projected')} (6)</div><div className="v"><CountUp value={total} decimals={1} /> <span className={`small ${total - baseTotal >= 0 ? 'good' : 'bad'}`}>{total - baseTotal >= 0 ? '+' : ''}{fmt(total - baseTotal)}</span></div></div>
       </div>
 
-      <h2 className="section-title">{t('gw')} <span className="hint">{t('tr.dragHint')}</span></h2>
+      <h2 className="section-title">{t('tr.planTitle')}</h2>
+      <p className="small muted" style={{ marginTop: -4 }}>{t('tr.planHint')}</p>
       <div className="gw-cols">
         {plan.map((p, i) => (
           <div key={p.gw} className={`gw-col drop-zone ${i === gi ? 'on' : ''}`} data-drop-gw={p.gw} onClick={() => setGi(i)} role="button" tabIndex={0}>
@@ -182,7 +224,12 @@ export function Transfers() {
         dropTarget
         xi={cur.xi.map((id) => ({ id, label: fmt(xp(id, gi)), captain: id === cur.captain, flag: flagOf(id), selected: id === selectedOut }))}
         bench={cur.bench.map((id) => ({ id, label: fmt(xp(id, gi)), flag: flagOf(id), selected: id === selectedOut }))}
-        onTap={(id) => setSelectedOut((s) => (s === id ? null : id))}
+        onTap={(id) => {
+          setSelectedOut((s) => (s === id ? null : id));
+          setQuery('');
+          // Bring the replacements list into view.
+          setTimeout(() => document.getElementById('replacements')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+        }}
       />
 
       {hitValues.map((h) => (
@@ -192,7 +239,8 @@ export function Transfers() {
         </div>
       ))}
 
-      <h2 className="section-title">{t('tr.search')}</h2>
+      <h2 className="section-title" id="replacements" style={{ scrollMarginTop: 70 }}>{selectedOut ? t('tr.replacementsFor', { name: pl.name(selectedOut) }) : t('tr.search')}</h2>
+      {outMember && <p className="small muted" style={{ marginTop: -4 }}>{t('tr.budgetFor', { money: (budgetFor / 10).toFixed(1) })}</p>}
       <div className="row" style={{ marginBottom: 8 }}>
         <input type="search" placeholder={t('tr.search')} value={query} onChange={(e) => setQuery(e.target.value)} />
       </div>
@@ -213,8 +261,17 @@ export function Transfers() {
                 <div className="sub">{pl.team(p.id)} · <Money v={p.cost} /> · {fmt(p.sel, 1)}%</div>
               </button>
               <div style={{ textAlign: 'end' }}>
-                <div className="num" style={{ fontWeight: 700 }}>{fmt(remainingXp(p.id))}</div>
-                <div className="tiny muted">{t('xp')}</div>
+                {selectedOut ? (
+                  <>
+                    <div className={`num ${remainingXp(p.id) - outXp >= 0 ? 'good' : 'bad'}`} style={{ fontWeight: 700 }}>{remainingXp(p.id) - outXp >= 0 ? '+' : ''}{fmt(remainingXp(p.id) - outXp)}</div>
+                    <div className="tiny muted">{t('tr.vsOut')}</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="num" style={{ fontWeight: 700 }}>{fmt(remainingXp(p.id))}</div>
+                    <div className="tiny muted">{t('xp')}</div>
+                  </>
+                )}
               </div>
             </div>
           ))}
@@ -252,7 +309,7 @@ export function Transfers() {
               <div style={{ textAlign: 'end', minWidth: 86 }}>
                 <div className={`num ${pln.net >= 0 ? 'good' : 'bad'}`} style={{ fontWeight: 700, fontSize: '1.15rem' }}>{pln.net >= 0 ? '+' : ''}{fmt(pln.net)}</div>
                 <div className="tiny muted">{t('tr.gain')} {fmt(pln.gain)}{pln.hitCost ? ` · −${pln.hitCost}` : ''}</div>
-                <button className="btn small" style={{ marginTop: 4 }} onClick={() => { setGi(0); setTransfers((ts) => [...ts.filter((x) => x.gw !== gws[0]), ...pln.moves.map((m) => ({ gw: gws[0], out: m.out, in: m.in }))]); }}>{t('tr.add')}</button>
+                <button className="btn small" style={{ marginTop: 4 }} onClick={() => applyMoves(pln.moves)}>{t('tr.add')}</button>
               </div>
             </div>
           ))}

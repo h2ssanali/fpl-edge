@@ -2,32 +2,35 @@ import { useState } from 'react';
 import { useI18n } from '../i18n';
 import { useStore } from '../store';
 import { PageHeader, Seg, usePlayer } from '../components/ui';
-import { fdrColor } from '../components/viz';
+import { fdrColor, fdrText } from '../components/viz';
 import type { FixtureCell } from '../engine/analyze';
 
-type Sort = 'overall' | 'att' | 'def';
+type Sort = 'fpl' | 'att' | 'def';
 
 export function Fixtures() {
   const { t } = useI18n();
   const { analysis: a, raw } = useStore();
   const pl = usePlayer();
-  const [sort, setSort] = useState<Sort>('overall');
+  const [sort, setSort] = useState<Sort>('fpl');
   if (!a || !raw) return null;
   const gws = a.horizon.slice(0, 8);
+  const val = (f: FixtureCell) => (sort === 'att' ? f.att : sort === 'def' ? f.def : f.fdr);
   const score = (cells: FixtureCell[][]) => cells.slice(0, 8).reduce((s, fx) => {
     if (!fx.length) return s + 5.5; // blank = worst
-    // Doubles count as two fixtures (easier overall).
-    return s + fx.reduce((x, f) => x + (sort === 'att' ? f.att : sort === 'def' ? f.def : f.overall), 0) / fx.length - (fx.length - 1) * 2;
+    // A double gameweek counts as easier overall (two chances to score).
+    return s + fx.reduce((x, f) => x + val(f), 0) / fx.length - (fx.length - 1) * 2;
   }, 0);
   const teams = [...raw.core.teams].sort((x, y) => score(a.grid[x.id] ?? []) - score(a.grid[y.id] ?? []));
   return (
     <div>
-      <PageHeader title={t('fx.title')} sub={t('fx.sub')} back="#/more" />
-      <Seg full value={sort} onChange={setSort} options={[{ value: 'overall', label: t('fx.sortAll') }, { value: 'att', label: t('fx.sortAtt') }, { value: 'def', label: t('fx.sortDef') }]} />
-      <div className="row small muted" style={{ gap: 10, margin: '10px 2px' }}>
-        {[1, 2, 3, 4, 5].map((f) => <span key={f} className="row" style={{ gap: 4 }}><i style={{ width: 12, height: 12, borderRadius: 3, background: fdrColor(f), display: 'inline-block' }} /><span className="num">{f}</span></span>)}
-        <span className="row" style={{ gap: 4 }}><i className="tk double" style={{ width: 14, height: 12, minWidth: 0, padding: 0, display: 'inline-block' }} />{t('fx.dgw')}</span>
-        <span className="row" style={{ gap: 4 }}><i className="tk blank" style={{ width: 14, height: 12, minWidth: 0, padding: 0, display: 'inline-block' }} />{t('fx.bgw')}</span>
+      <PageHeader title={t('fx.title')} sub={sort === 'fpl' ? t('fx.subFpl') : t('fx.subEdge')} back="#/more" />
+      <Seg full value={sort} onChange={setSort} options={[{ value: 'fpl', label: t('fx.sortFpl') }, { value: 'att', label: t('fx.sortAtt') }, { value: 'def', label: t('fx.sortDef') }]} />
+      <div className="row wrap small muted" style={{ gap: 10, margin: '10px 2px' }}>
+        <span>{t('fx.easy')}</span>
+        {[1, 2, 3, 4, 5].map((f) => <span key={f} className="num" style={{ width: 24, height: 20, borderRadius: 4, background: fdrColor(f), color: fdrText(f), display: 'inline-grid', placeItems: 'center', fontWeight: 700 }}>{f}</span>)}
+        <span>{t('fx.hard')}</span>
+        <span className="row" style={{ gap: 4 }}><i className="tk double" style={{ width: 16, height: 14, minWidth: 0, padding: 0, display: 'inline-block' }} />{t('fx.dgw')}</span>
+        <span className="row" style={{ gap: 4 }}><i className="tk blank" style={{ width: 16, height: 14, minWidth: 0, padding: 0, display: 'inline-block' }} />{t('fx.bgw')}</span>
       </div>
       <div className="table-scroll" dir="ltr">
         <table className="ticker">
@@ -38,13 +41,12 @@ export function Fixtures() {
                 <td className="team">{tm.short}</td>
                 {(a.grid[tm.id] ?? []).slice(0, 8).map((fx, i) => {
                   if (!fx.length) return <td key={i}><div className="tk blank">—</div></td>;
-                  const val = (f: FixtureCell) => (sort === 'att' ? f.att : sort === 'def' ? f.def : f.overall);
                   return (
                     <td key={i}>
-                      <div className={`tk ${fx.length > 1 ? 'double tk-dbl' : ''}`} style={{ background: fx.length > 1 ? 'transparent' : fdrColor(val(fx[0])), padding: fx.length > 1 ? 2 : undefined }}>
+                      <div className={fx.length > 1 ? 'tk double tk-dbl' : ''} style={fx.length > 1 ? { padding: 2 } : undefined}>
                         {fx.map((f, j) => (
-                          <div key={j} className={`tk f${Math.round(val(f))}`} style={{ background: fdrColor(val(f)), minWidth: 0, padding: fx.length > 1 ? '2px' : 0 }}>
-                            {pl.teamShort(f.opp)}<small>{f.home ? 'H' : 'A'} · {(sort === 'def' ? f.la : f.lf).toFixed(1)}</small>
+                          <div key={j} className="tk" style={{ background: fdrColor(val(f)), color: fdrText(val(f)), padding: fx.length > 1 ? '2px' : undefined }}>
+                            {pl.teamShort(f.opp)}<small>{f.home ? 'H' : 'A'}</small>
                           </div>
                         ))}
                       </div>

@@ -26,7 +26,7 @@ export interface PlayerSummary {
   rotation: boolean; sample: number;
 }
 
-export interface FixtureCell { opp: number; home: boolean; att: number; def: number; overall: number; lf: number; la: number }
+export interface FixtureCell { opp: number; home: boolean; fdr: number; att: number; def: number; overall: number; lf: number; la: number }
 
 export interface SquadSlot extends SquadMember { position: number; isCap: boolean; isVice: boolean }
 
@@ -165,7 +165,7 @@ export class Analyzer {
         const opp = home ? f.a : f.h;
         const m = modelFdr(this.ctx.teams, t.id, opp, home);
         const l = home ? this.lambdas(f.h, f.a) : this.lambdas(f.h, f.a);
-        return { opp, home, att: m.attack, def: m.defence, overall: m.overall, lf: home ? l.home : l.away, la: home ? l.away : l.home };
+        return { opp, home, fdr: home ? f.hd : f.ad, att: m.attack, def: m.defence, overall: m.overall, lf: home ? l.home : l.away, la: home ? l.away : l.home };
       }));
     }
 

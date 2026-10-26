@@ -1,7 +1,7 @@
 import { useEffect, useState, type ComponentType } from 'react';
 import { useI18n, safeGet, safeSet } from './i18n';
 import { useStore } from './store';
-import { BrandMark, IconAlert, IconArmband, IconGrid, IconHome, IconMoon, IconSun, IconTransfer, IconTrophy } from './components/icons';
+import { BrandMark, IconArmband, IconGrid, IconHome, IconMoon, IconSun, IconTransfer, IconTrophy } from './components/icons';
 import { Loading } from './components/ui';
 import { TeamBox } from './components/TeamBox';
 import { Home } from './screens/Home';
@@ -23,7 +23,6 @@ import { Story } from './screens/Story';
 import { Deadline } from './screens/Deadline';
 import { Settings } from './screens/Settings';
 
-export const REPO = 'h2ssanali/fpl-edge';
 
 function useRoute() {
   const get = () => (window.location.hash.replace(/^#\/?/, '') || 'home');
@@ -43,26 +42,31 @@ const SCREENS: Record<string, ComponentType> = {
   'more/journal': Journal, 'more/chaos': Chaos, 'more/story': Story, 'more/deadline': Deadline, 'more/settings': Settings,
 };
 
-function DemoBanner() {
+/** Welcome card: ask for a team ID until the visitor has entered one. */
+function WelcomeCard({ full }: { full: boolean }) {
   const { t } = useI18n();
   const { raw, teamError } = useStore();
   if (!raw || (raw.meta.mode !== 'demo' && !teamError)) return null;
   const me = raw.managers.find((m) => m.id === raw.meta.teamId);
+  if (!full) {
+    return (
+      <a href="#/home" className="pill accent" style={{ marginBottom: 12, display: 'inline-flex', textDecoration: 'none' }}>
+        {teamError ? t(`team.${teamError}`) : t('demoSlim')}
+      </a>
+    );
+  }
   return (
-    <div className="banner" role="note">
-      <IconAlert />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <b>{raw.meta.mode === 'demo' ? t('demoTitle') : t('team.title')}</b>
-        {raw.meta.mode === 'demo' && <span>{t('demoShort', { name: '' })}<bdi dir="ltr">{me?.entry.name ?? '#1'}</bdi></span>}
-        <TeamBox compact />
-      </div>
-    </div>
+    <section className="card accent glass" style={{ marginBottom: 14 }}>
+      <div className="display" style={{ fontSize: '1.2rem' }}>{t('demoTitle')}</div>
+      {raw.meta.mode === 'demo' && <p className="small muted" style={{ margin: '4px 0 0' }}>{t('demoShort')}<bdi dir="ltr">{me?.entry.name ?? '#1'}</bdi></p>}
+      <TeamBox compact />
+    </section>
   );
 }
 
 export function App() {
   const { t, lang, setLang } = useI18n();
-  const { status, error, reload, raw, rivalsLoading } = useStore();
+  const { status, reload, raw, rivalsLoading } = useStore();
   const route = useRoute();
   const [theme, setTheme] = useState<'dark' | 'light'>(() => (safeGet('fpl-edge-theme') as 'dark' | 'light') || 'dark');
   useEffect(() => {
@@ -94,7 +98,7 @@ export function App() {
           <button className="icon-btn lang-btn" onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')} aria-label="Language">{lang === 'ar' ? 'EN' : 'ع'}</button>
           <button className="icon-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Theme">{theme === 'dark' ? <IconSun /> : <IconMoon />}</button>
         </header>
-        {status === 'ready' && <DemoBanner />}
+        {status === 'ready' && route !== 'more/settings' && <WelcomeCard full={route === 'home'} />}
         {status === 'ready' && rivalsLoading && (
           <div className="pill" role="status" style={{ marginBottom: 10, display: 'flex', width: 'fit-content', gap: 8 }}>
             <span className="live-dot" />{t('team.rivalsLoading', { done: rivalsLoading.done, total: rivalsLoading.total })}
@@ -103,7 +107,7 @@ export function App() {
         {status === 'error' ? (
           <div className="card" style={{ textAlign: 'center' }}>
             <p className="display">{t('loadError')}</p>
-            <p className="small muted" dir="ltr" style={{ wordBreak: 'break-word' }}>{error}</p>
+            <p className="small muted">{t('loadErrorHint')}</p>
             <button className="btn primary" onClick={reload}>{t('retry')}</button>
           </div>
         ) : status === 'loading' ? <Loading /> : status === 'team' ? <Loading label={t('team.loading')} /> : status === 'simulating' ? <Loading label={t('loadingSim')} /> : (

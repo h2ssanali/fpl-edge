@@ -395,7 +395,7 @@ async function main() {
   if (mode === 'demo') {
     const results = (overallTop?.standings?.results || []).slice(0, 20);
     const league = {
-      id: 314, name: 'Overall — Top 20 (demo)', type: 's', demo: true, myId: teamId,
+      id: 314, name: 'World Top 20', type: 's', demo: true, myId: teamId,
       standings: results.map((r) => ({ entry: r.entry, name: r.entry_name, player: r.player_name, rank: r.rank,
         lastRank: r.last_rank, total: r.total, eventTotal: r.event_total })),
     };

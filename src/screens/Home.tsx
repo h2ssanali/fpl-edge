@@ -3,6 +3,7 @@ import { useStore } from '../store';
 import { Countdown, Empty, MiniShirt, PName, Reasons } from '../components/ui';
 import { CountUp, DistChart, Gauge } from '../components/viz';
 import { IconArrowDown, IconArrowUp, IconClock, IconPhone } from '../components/icons';
+import { RankCard } from '../components/MyRank';
 
 export function Home() {
   const { t, fmt, pct } = useI18n();
@@ -30,6 +31,8 @@ export function Home() {
           </div>
         )}
       </section>
+
+      <RankCard />
 
       <div className="grid-2">
         <a href="#/captain" className="card accent" style={{ textDecoration: 'none', color: 'inherit' }}>

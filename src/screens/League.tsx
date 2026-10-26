@@ -5,6 +5,7 @@ import { Empty, MiniShirt, PageHeader, PName, Seg, usePlayer } from '../componen
 import { Bar, CountUp, Gauge } from '../components/viz';
 import { IconArrowDown, IconArrowUp } from '../components/icons';
 import type { MoveImpact, RivalView } from '../engine/analyze';
+import { LeaguesList, RankCard } from '../components/MyRank';
 
 type Tab = 'standings' | 'dial' | 'rivals' | 'eo';
 
@@ -13,27 +14,32 @@ export function League() {
   const { analysis: a, rivalsLoading } = useStore();
   const [tab, setTab] = useState<Tab>('standings');
   const lg = a?.league;
-  if (!a || !lg) return (
-    <>
-      <PageHeader title={t('lg.title')} />
-      {rivalsLoading ? (
-        <div className="card"><div className="skeleton" style={{ height: 90, marginBottom: 10 }} /><div className="small">{t('team.rivalsLoading', rivalsLoading)}</div><div className="tiny muted">{t('team.liteNote')}</div></div>
-      ) : <Empty>{t('team.noLeague')}</Empty>}
-    </>
-  );
   return (
     <div>
-      <PageHeader title={lg.name} sub={lg.demo ? t('lg.demoNote') : undefined} />
-      <Seg full value={tab} onChange={setTab} options={[
-        { value: 'standings', label: t('lg.standings') }, { value: 'dial', label: t('lg.dial') },
-        { value: 'rivals', label: t('lg.rivals') }, { value: 'eo', label: t('lg.eo') },
-      ]} />
-      <div style={{ marginTop: 14 }}>
-        {tab === 'standings' && <Standings />}
-        {tab === 'dial' && <RiskDial />}
-        {tab === 'rivals' && <Rivals />}
-        {tab === 'eo' && <EoWhatIf />}
-      </div>
+      <PageHeader title={t('rank.title')} />
+      <RankCard link={false} />
+      <h2 className="section-title">{t('rank.myLeagues')}</h2>
+      <LeaguesList />
+      <h2 className="section-title">{lg ? t('lg.analysisOf', { name: lg.name }) : t('lg.title')}</h2>
+      {!a || !lg ? (
+        rivalsLoading ? (
+          <div className="card"><div className="skeleton" style={{ height: 90, marginBottom: 10 }} /><div className="small">{t('team.rivalsLoading', rivalsLoading)}</div><div className="tiny muted">{t('team.liteNote')}</div></div>
+        ) : <Empty>{t('team.noLeague')}</Empty>
+      ) : (
+        <>
+          {lg.demo && <p className="small muted" style={{ marginTop: -4 }}>{t('lg.demoNote')}</p>}
+          <Seg full value={tab} onChange={setTab} options={[
+            { value: 'standings', label: t('lg.standings') }, { value: 'dial', label: t('lg.dial') },
+            { value: 'rivals', label: t('lg.rivals') }, { value: 'eo', label: t('lg.eo') },
+          ]} />
+          <div style={{ marginTop: 14 }}>
+            {tab === 'standings' && <Standings />}
+            {tab === 'dial' && <RiskDial />}
+            {tab === 'rivals' && <Rivals />}
+            {tab === 'eo' && <EoWhatIf />}
+          </div>
+        </>
+      )}
     </div>
   );
 }

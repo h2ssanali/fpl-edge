@@ -104,4 +104,7 @@ export function Spark({ values, width = 80, height = 24 }: { values: number[]; w
   return <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ direction: "ltr" }} aria-hidden><polyline points={pts} fill="none" stroke={up ? 'var(--good)' : 'var(--bad)'} strokeWidth="2" strokeLinecap="round" /></svg>;
 }
 
-export const fdrColor = (f: number) => `var(--fdr-${Math.max(1, Math.min(5, Math.round(f)))})`;
+const fdrIdx = (f: number) => Math.max(1, Math.min(5, Math.round(f)));
+/** Official FPL difficulty colours (background + readable text). */
+export const fdrColor = (f: number) => `var(--fdr-${fdrIdx(f)})`;
+export const fdrText = (f: number) => (fdrIdx(f) === 2 || fdrIdx(f) === 3 ? '#0b1f14' : '#ffffff');
