@@ -2,8 +2,20 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { Analysis, Phase2, RawData, RivalView } from './engine/analyze';
 import type { Player, Team } from './engine/types';
 import { loadAll } from './data/load';
+import { loadLeagueAndHistory, loadMyTeam, setOwnRelay, TeamNotFound } from './data/remote';
 
-type Status = 'loading' | 'simulating' | 'ready' | 'error';
+type Status = 'loading' | 'team' | 'simulating' | 'ready' | 'error';
+
+const lsGet = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k: string, v: string | null) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch { /* ignore */ } };
+
+/** Team chosen in the app: ?team=123 in a shared link wins, then the saved choice. */
+function initialTeam(): number | null {
+  const fromUrl = new URLSearchParams(window.location.search).get('team') ?? new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('team');
+  const id = Number(fromUrl || lsGet('fpl-edge-team') || 0);
+  if (fromUrl && id > 0) lsSet('fpl-edge-team', String(id));
+  return id > 0 ? id : null;
+}
 
 interface Store {
   status: Status;
@@ -16,6 +28,14 @@ interface Store {
   teams: Map<number, Team>;
   request: <T>(type: string, payload: unknown) => Promise<T>;
   reload: () => void;
+  /** Team entered in the app (null = use config.json / demo). */
+  customTeam: number | null;
+  customLeague: number | null;
+  setTeam: (id: number | null) => void;
+  setLeague: (id: number | null) => void;
+  teamError: 'notFound' | 'network' | null;
+  /** Background loading of the mini-league (in-app teams only). */
+  rivalsLoading: { done: number; total: number } | null;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -31,6 +51,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const pending = useRef(new Map<number, { resolve: (v: unknown) => void; reject: (e: unknown) => void }>());
   const nextId = useRef(1);
   const [nonce, setNonce] = useState(0);
+  const [customTeam, setCustomTeam] = useState<number | null>(initialTeam);
+  const [customLeague, setCustomLeague] = useState<number | null>(() => Number(lsGet('fpl-edge-league') || 0) || null);
+  const [teamError, setTeamError] = useState<'notFound' | 'network' | null>(null);
+  const [rivalsLoading, setRivalsLoading] = useState<{ done: number; total: number } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,17 +79,44 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         setStatus('loading');
-        const r = await loadAll((p) => !cancelled && setProgress(p));
+        let r = await loadAll((p) => !cancelled && setProgress(p));
         if (cancelled) return;
-        setRaw(r);
+        setTeamError(null);
+        setOwnRelay(__FPL_RELAY__ || r.meta.relayUrl);
+        const teamId = customTeam ?? r.meta.teamId;
+        const needRemote = !!teamId && ((!!customTeam && customTeam !== r.meta.teamId) || (!!customLeague && !r.meta.leagueIds.includes(customLeague)));
+        const start = (data: RawData) => { setRaw(data); worker.postMessage({ id: 0, type: 'init', payload: { raw: data } }); };
+        if (!teamId || !needRemote) { setStatus('simulating'); start(r); return; }
+
+        // Phase A: the user's own team, fast, then show the analysis straight away.
+        setStatus('team');
+        let me;
+        try {
+          me = await loadMyTeam(teamId, r.core.events);
+        } catch (err) {
+          if (cancelled) return;
+          // Keep the default data so the app still works; tell the user why.
+          setTeamError(err instanceof TeamNotFound ? 'notFound' : 'network');
+          setStatus('simulating'); start(r); return;
+        }
+        if (cancelled) return;
+        const base: RawData = { ...r, meta: { ...r.meta, mode: 'user', teamId, leagueIds: [] }, managers: [me], leagues: [] };
         setStatus('simulating');
-        worker.postMessage({ id: 0, type: 'init', payload: { raw: r } });
+        start(base);
+
+        // Phase B (background): mini-league, rivals and full season history; re-run when ready.
+        setRivalsLoading({ done: 0, total: 1 });
+        const b = await loadLeagueAndHistory(me, r.core.events, customLeague, (done, total) => !cancelled && setRivalsLoading({ done, total }));
+        if (cancelled) return;
+        setRivalsLoading(null);
+        setPhase2(null);
+        start({ ...base, meta: { ...base.meta, leagueIds: b.league ? [b.league.id] : [] }, managers: [b.manager, ...b.rivals], leagues: b.league ? [b.league] : [] });
       } catch (err) {
         if (!cancelled) { setError(String(err)); setStatus('error'); }
       }
     })();
-    return () => { cancelled = true; worker.terminate(); };
-  }, [nonce]);
+    return () => { cancelled = true; setRivalsLoading(null); worker.terminate(); };
+  }, [nonce, customTeam, customLeague]);
 
   const request = useCallback(<T,>(type: string, payload: unknown) => new Promise<T>((resolve, reject) => {
     const id = nextId.current++;
@@ -76,7 +127,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const players = useMemo(() => new Map((raw?.core.players ?? []).map((p) => [p.id, p])), [raw]);
   const teams = useMemo(() => new Map((raw?.core.teams ?? []).map((t) => [t.id, t])), [raw]);
 
-  const value: Store = { status, progress, error, raw, analysis, phase2, players, teams, request, reload: () => setNonce((n) => n + 1) };
+  const setTeam = useCallback((id: number | null) => {
+    lsSet('fpl-edge-team', id ? String(id) : null);
+    lsSet('fpl-edge-league', null);
+    setCustomLeague(null);
+    setPhase2(null);
+    setCustomTeam(id);
+  }, []);
+  const setLeague = useCallback((id: number | null) => {
+    lsSet('fpl-edge-league', id ? String(id) : null);
+    setPhase2(null);
+    setCustomLeague(id);
+  }, []);
+
+  const value: Store = {
+    status, progress, error, raw, analysis, phase2, players, teams, request, reload: () => setNonce((n) => n + 1),
+    customTeam, customLeague, setTeam, setLeague, teamError, rivalsLoading,
+  };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

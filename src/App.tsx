@@ -3,6 +3,7 @@ import { useI18n, safeGet, safeSet } from './i18n';
 import { useStore } from './store';
 import { BrandMark, IconAlert, IconArmband, IconGrid, IconHome, IconMoon, IconSun, IconTransfer, IconTrophy } from './components/icons';
 import { Loading } from './components/ui';
+import { TeamBox } from './components/TeamBox';
 import { Home } from './screens/Home';
 import { Captain } from './screens/Captain';
 import { Transfers } from './screens/Transfers';
@@ -44,19 +45,16 @@ const SCREENS: Record<string, ComponentType> = {
 
 function DemoBanner() {
   const { t } = useI18n();
-  const { raw } = useStore();
-  if (!raw || raw.meta.mode !== 'demo') return null;
+  const { raw, teamError } = useStore();
+  if (!raw || (raw.meta.mode !== 'demo' && !teamError)) return null;
   const me = raw.managers.find((m) => m.id === raw.meta.teamId);
-  const parts = t('demoBody', { name: '\u0000', config: '\u0001' }).split(/(\u0000|\u0001)/);
   return (
     <div className="banner" role="note">
       <IconAlert />
-      <div>
-        <b>{t('demoTitle')}</b>
-        {parts.map((p, i) => p === '\u0000' ? <bdi key={i} dir="ltr">{me?.entry.name ?? '#1'}</bdi>
-          : p === '\u0001' ? <a key={i} href={`https://github.com/${REPO}/edit/main/config.json`} target="_blank" rel="noreferrer">{t('demoConfig')}</a>
-          : <span key={i}>{p}</span>)}
-        {' '}<a href={`https://github.com/${REPO}/actions/workflows/data.yml`} target="_blank" rel="noreferrer">{t('demoWorkflow')}</a>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <b>{raw.meta.mode === 'demo' ? t('demoTitle') : t('team.title')}</b>
+        {raw.meta.mode === 'demo' && <span>{t('demoShort', { name: '' })}<bdi dir="ltr">{me?.entry.name ?? '#1'}</bdi></span>}
+        <TeamBox compact />
       </div>
     </div>
   );
@@ -64,7 +62,7 @@ function DemoBanner() {
 
 export function App() {
   const { t, lang, setLang } = useI18n();
-  const { status, error, reload, raw } = useStore();
+  const { status, error, reload, raw, rivalsLoading } = useStore();
   const route = useRoute();
   const [theme, setTheme] = useState<'dark' | 'light'>(() => (safeGet('fpl-edge-theme') as 'dark' | 'light') || 'dark');
   useEffect(() => {
@@ -96,14 +94,19 @@ export function App() {
           <button className="icon-btn lang-btn" onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')} aria-label="Language">{lang === 'ar' ? 'EN' : 'ع'}</button>
           <button className="icon-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Theme">{theme === 'dark' ? <IconSun /> : <IconMoon />}</button>
         </header>
-        <DemoBanner />
+        {status === 'ready' && <DemoBanner />}
+        {status === 'ready' && rivalsLoading && (
+          <div className="pill" role="status" style={{ marginBottom: 10, display: 'flex', width: 'fit-content', gap: 8 }}>
+            <span className="live-dot" />{t('team.rivalsLoading', { done: rivalsLoading.done, total: rivalsLoading.total })}
+          </div>
+        )}
         {status === 'error' ? (
           <div className="card" style={{ textAlign: 'center' }}>
             <p className="display">{t('loadError')}</p>
             <p className="small muted" dir="ltr" style={{ wordBreak: 'break-word' }}>{error}</p>
             <button className="btn primary" onClick={reload}>{t('retry')}</button>
           </div>
-        ) : status === 'loading' ? <Loading /> : status === 'simulating' ? <Loading label={t('loadingSim')} /> : (
+        ) : status === 'loading' ? <Loading /> : status === 'team' ? <Loading label={t('team.loading')} /> : status === 'simulating' ? <Loading label={t('loadingSim')} /> : (
           <main className="page" key={route}><Screen /></main>
         )}
       </div>

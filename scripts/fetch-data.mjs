@@ -81,7 +81,8 @@ function loadConfig() {
   const teamId = Number(envTeam || cfg.teamId || 0) || null;
   const leagueIds = (envLeagues ? envLeagues.split(/[\s,]+/) : cfg.leagueIds || [])
     .map(Number).filter((n) => n > 0);
-  return { teamId, leagueIds };
+  const relayUrl = String(cfg.relayUrl || '').trim().replace(/\/+$/, '');
+  return { teamId, leagueIds, relayUrl };
 }
 
 // ---------- transforms ----------
@@ -434,7 +435,7 @@ async function main() {
   const nextDeadline = next?.deadline || null;
   const meta = {
     updated: new Date().toISOString(), mode, teamId, leagueIds: leagues.map((l) => l.id),
-    configuredTeamId: cfg.teamId, configuredLeagueIds: cfg.leagueIds,
+    configuredTeamId: cfg.teamId, configuredLeagueIds: cfg.leagueIds, relayUrl: cfg.relayUrl || null,
     currentGw: core.currentGw, nextGw: core.nextGw, lastFinished, nextDeadline,
     liveGws: Object.keys(liveIndex.gws).map(Number).sort((a, b) => a - b),
     topGws: topIndex, history: readJson('history/index.json', { dates: [] }).dates.slice(-30),

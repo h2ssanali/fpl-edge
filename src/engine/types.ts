@@ -102,7 +102,7 @@ export interface TopSample { gw: number; sampled: number; rows: number; avg: num
 
 export interface Meta {
   updated: string; mode: 'demo' | 'user'; teamId: number | null; leagueIds: number[];
-  configuredTeamId: string | number | null; configuredLeagueIds: number[];
+  configuredTeamId: string | number | null; configuredLeagueIds: number[]; relayUrl?: string | null;
   currentGw: number; nextGw: number | null; lastFinished: number; nextDeadline: string | null;
   liveGws: number[]; topGws: number[]; history: string[]; requests: number;
 }

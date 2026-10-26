@@ -10,10 +10,17 @@ type Tab = 'standings' | 'dial' | 'rivals' | 'eo';
 
 export function League() {
   const { t } = useI18n();
-  const { analysis: a } = useStore();
+  const { analysis: a, rivalsLoading } = useStore();
   const [tab, setTab] = useState<Tab>('standings');
   const lg = a?.league;
-  if (!a || !lg) return <><PageHeader title={t('lg.title')} /><Empty>{t('set.teamHow')}</Empty></>;
+  if (!a || !lg) return (
+    <>
+      <PageHeader title={t('lg.title')} />
+      {rivalsLoading ? (
+        <div className="card"><div className="skeleton" style={{ height: 90, marginBottom: 10 }} /><div className="small">{t('team.rivalsLoading', rivalsLoading)}</div><div className="tiny muted">{t('team.liteNote')}</div></div>
+      ) : <Empty>{t('team.noLeague')}</Empty>}
+    </>
+  );
   return (
     <div>
       <PageHeader title={lg.name} sub={lg.demo ? t('lg.demoNote') : undefined} />

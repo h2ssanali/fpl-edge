@@ -1,9 +1,16 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { readFileSync } from 'node:fs';
+
+// The optional relay (config.json → relayUrl) is baked in at build time, so an edit
+// to config.json on GitHub takes effect with the automatic redeploy.
+let relayUrl = '';
+try { relayUrl = String(JSON.parse(readFileSync('config.json', 'utf8')).relayUrl || ''); } catch { /* none */ }
 
 export default defineConfig({
   base: '/fpl-edge/',
+  define: { __FPL_RELAY__: JSON.stringify(relayUrl) },
   plugins: [
     react(),
     VitePWA({

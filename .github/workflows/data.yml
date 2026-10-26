@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: '0 */6 * * *'   # every 6 hours
     - cron: '30 * * * *'    # hourly, but only acts on a deadline day (see gate)
+  push:
+    branches: [main]
+    paths: [config.json]   # editing your team ID on GitHub refreshes the data
   workflow_dispatch:
     inputs:
       team_id:

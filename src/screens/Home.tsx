@@ -25,7 +25,7 @@ export function Home() {
         <Countdown deadline={a.deadline} />
         {me && (
           <div className="row between small" style={{ marginTop: 8 }}>
-            <span className="muted"><bdi dir="ltr">{me.name}</bdi></span>
+            <a href="#/more/settings" className="muted" style={{ textDecoration: 'none' }}><bdi dir="ltr">{me.name}</bdi> · <span className="accent-text">{t('team.change')}</span></a>
             <span className="muted">{t('updated')}: <span className="num" dir="ltr">{updated.toLocaleString(undefined, { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</span></span>
           </div>
         )}
