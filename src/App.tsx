@@ -93,7 +93,7 @@ export function App() {
     <>
       <div className="app">
         <header className="topbar">
-          <a href="#/home" className="brand" style={{ color: 'inherit', textDecoration: 'none' }}><BrandMark /> <span dir="ltr">hassan<em>ilo</em></span></a>
+          <a href="#/home" className="brand" style={{ color: 'inherit', textDecoration: 'none' }}><BrandMark /> <span dir="ltr">ARK<em>ILO</em></span></a>
           <div className="spacer" />
           {raw && <span className="pill num" title={t('updated')}>{t('gw')} {raw.core.nextGw ?? raw.core.currentGw}</span>}
           <button className="icon-btn lang-btn" onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')} aria-label="Language">{lang === 'ar' ? 'EN' : 'ع'}</button>

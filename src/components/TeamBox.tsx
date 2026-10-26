@@ -34,7 +34,7 @@ export function TeamBox({ compact = false }: { compact?: boolean }) {
     if (!id) return;
     const url = `${location.origin}${location.pathname}?team=${id}`;
     try {
-      if (navigator.share) await navigator.share({ title: 'hassanilo', url });
+      if (navigator.share) await navigator.share({ title: 'ARKILO', url });
       else { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2500); }
     } catch { /* cancelled */ }
   };

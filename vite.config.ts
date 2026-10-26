@@ -17,8 +17,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icons/*.png', 'icons/*.svg'],
       manifest: {
-        name: 'hassanilo',
-        short_name: 'hassanilo',
+        name: 'ARKILO',
+        short_name: 'ARKILO',
         description: 'مساعد فانتازي الدوري الإنجليزي — توقعات ومحاكاة واستراتيجية دوري مصغر',
         lang: 'ar',
         dir: 'rtl',
