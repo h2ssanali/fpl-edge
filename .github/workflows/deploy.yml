@@ -35,6 +35,10 @@ jobs:
       - name: Fetch data if none is committed yet
         run: test -f public/data/core.json || node scripts/fetch-data.mjs
       - run: npm test
+      - name: Invite codes (from the ACCESS_CODES secret; empty = open site)
+        env:
+          ACCESS_CODES: ${{ secrets.ACCESS_CODES }}
+        run: node scripts/access.mjs
       - run: npm run build
       - uses: actions/configure-pages@v5
         with:

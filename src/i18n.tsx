@@ -272,6 +272,7 @@ const ar: Dict = {
   'ch.whyLabel': 'لماذا هذه الجولة؟',
   'ch.barsNote': 'الأعمدة: النقاط الإضافية المتوقعة من الشريحة في كل جولة.',
   'trr.pair': 'بِع {out} واشترِ {in}',
+  'gate.text': 'هذا الموقع خاص بالمدعوين. أدخل رمز الدعوة الذي وصلك.', 'gate.placeholder': 'رمز الدعوة', 'gate.wrong': 'الرمز غير صحيح. تأكد منه واطلب رمزاً جديداً إن لزم.', 'gate.enter': 'دخول', 'gate.hint': 'يُحفظ الرمز على جهازك، فلن يُطلب منك مرة أخرى.',
   'why': 'لماذا؟',
 };
 
@@ -522,6 +523,7 @@ const en: Dict = {
   'ch.whyLabel': 'Why this gameweek?',
   'ch.barsNote': 'Bars: the chip’s extra expected points in each gameweek.',
   'trr.pair': '{out} → {in}',
+  'gate.text': 'This site is invite-only. Enter the invite code you were given.', 'gate.placeholder': 'Invite code', 'gate.wrong': 'That code isn’t valid. Check it or ask for a new one.', 'gate.enter': 'Enter', 'gate.hint': 'The code is saved on this device, so you won’t be asked again.',
   'why': 'Why?',
 };
 

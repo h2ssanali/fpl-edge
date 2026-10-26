@@ -5,11 +5,16 @@ import { readFileSync } from 'node:fs';
 
 // The optional relay (config.json → relayUrl) is baked in at build time, so an edit
 // to config.json on GitHub takes effect with the automatic redeploy.
+// The site lives at https://<user>.github.io/<repo>/ — derive the path from the
+// repository name in CI so renaming the repo just works.
+const repoName = (process.env.GITHUB_REPOSITORY ?? '').split('/')[1] || 'fpl-edge';
+const BASE = `/${repoName}/`;
+
 let relayUrl = '';
 try { relayUrl = String(JSON.parse(readFileSync('config.json', 'utf8')).relayUrl || ''); } catch { /* none */ }
 
 export default defineConfig({
-  base: '/fpl-edge/',
+  base: BASE,
   define: { __FPL_RELAY__: JSON.stringify(relayUrl) },
   plugins: [
     react(),
@@ -22,8 +27,8 @@ export default defineConfig({
         description: 'مساعد فانتازي الدوري الإنجليزي — توقعات ومحاكاة واستراتيجية دوري مصغر',
         lang: 'ar',
         dir: 'rtl',
-        start_url: '/fpl-edge/',
-        scope: '/fpl-edge/',
+        start_url: BASE,
+        scope: BASE,
         display: 'standalone',
         orientation: 'portrait',
         background_color: '#04110c',
@@ -37,7 +42,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         globIgnores: ['data/**'],
-        navigateFallback: '/fpl-edge/index.html',
+        navigateFallback: `${BASE}index.html`,
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.includes('/data/'),

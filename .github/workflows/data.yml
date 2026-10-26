@@ -97,5 +97,6 @@ jobs:
     needs: fetch
     if: needs.fetch.outputs.ran == 'true' && github.ref_name == 'main'
     uses: ./.github/workflows/deploy.yml
+    secrets: inherit
     with:
       ref: main

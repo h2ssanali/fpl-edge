@@ -110,7 +110,7 @@ function stat(c: CanvasRenderingContext2D, ctx: Ctx, label: string, value: strin
   text(c, label, x, y + 54, '500 34px "IBM Plex Sans Arabic"', 'rgba(255,255,255,0.65)', 'center', ctx.lang);
 }
 function footer(c: CanvasRenderingContext2D, ctx: Ctx) {
-  latin(c, 'h2ssanali.github.io/fpl-edge', W / 2, H - 110, '600 34px "Barlow Condensed"', 'rgba(255,255,255,0.55)');
+  latin(c, (location.host + location.pathname).replace(/\/$/, ''), W / 2, H - 110, '600 34px "Barlow Condensed"', 'rgba(255,255,255,0.55)');
   text(c, ctx.t('tagline'), W / 2, H - 160, '500 36px "IBM Plex Sans Arabic"', 'rgba(255,255,255,0.75)', 'center', ctx.lang);
 }
 
