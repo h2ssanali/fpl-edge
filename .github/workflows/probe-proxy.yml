@@ -1,0 +1,30 @@
+name: probe-proxy
+on:
+  push:
+    branches: [claude/adoring-einstein-17yki4]
+    paths: [.github/workflows/probe-proxy.yml]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          T="https://fantasy.premierleague.com/api/entry/895045/"
+          E=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1],safe=''))" "$T")
+          for P in \
+            "https://corsproxy.io/?url=$E" \
+            "https://corsproxy.io/?$E" \
+            "https://api.allorigins.win/raw?url=$E" \
+            "https://api.codetabs.com/v1/proxy?quest=$T" \
+            "https://cors.eu.org/$T" \
+            "https://api.cors.lol/?url=$E" \
+            "https://thingproxy.freeboard.io/fetch/$T" \
+            "https://everyorigin.jwvbremen.nl/api/get?url=$E" \
+            "https://whateverorigin.org/get?url=$E" \
+            "https://proxy.corsfix.com/?$T" \
+            "https://cors-anywhere.herokuapp.com/$T" ; do
+            for i in 1 2; do
+              R=$(curl -s -m 20 -D h.txt -o b.txt -w "%{http_code} %{time_total}" -H "Origin: https://h2ssanali.github.io" "$P")
+              ACAO=$(grep -i '^access-control-allow-origin' h.txt | tr -d '\r' | head -1)
+              echo "PROXY $P => $R | $ACAO | $(head -c 90 b.txt | tr '\n' ' ')"
+            done
+          done
