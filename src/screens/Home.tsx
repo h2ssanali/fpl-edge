@@ -34,6 +34,14 @@ export function Home() {
         )}
       </section>
 
+      {me?.recorded ? (
+        <a href="#/transfers" className="card accent" style={{ textDecoration: 'none', color: 'inherit', padding: '10px 14px' }}>
+          <div className="small"><b>{t('rec.homeDone', { n: me.recorded.ins.length })}</b> <span className="card-link">{t('rec.edit')}</span></div>
+        </a>
+      ) : me && (
+        <a href="#/transfers" className="small muted" style={{ textDecoration: 'none', padding: '0 4px' }}>{t('rec.homeHint')} <span className="accent-text">{t('rec.homeHintLink')}</span></a>
+      )}
+
       <RankCard />
       <WhatIf />
 

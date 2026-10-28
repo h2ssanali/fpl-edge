@@ -82,3 +82,29 @@ describe.skipIf(!has)('wildcard builder', () => {
     expect(a2.squad.some((m) => m.id === palmer.id)).toBe(true);
   }, 60000);
 });
+
+describe.skipIf(!has)('recorded (not yet public) transfers', () => {
+  it('applies moves made on the FPL site to the squad, bank and free transfers', () => {
+    const meta = read('meta.json');
+    const raw: RawData = {
+      meta, core: read('core.json'), fixtures: read('fixtures.json'),
+      live: meta.liveGws.map((g: number) => read(`live/${g}.json`)),
+      managers: fs.readdirSync(path.join(D, 'managers')).map((f) => read(`managers/${f}`)),
+      leagues: [], top: null, perGw: null, snapshots: [],
+    };
+    const before = new Analyzer(raw).phase1().me!;
+    const out = before.squad.find((m) => m.pos === 3)!;
+    const inn = raw.core.players.filter((p) => p.pos === 3 && p.cost <= out.sell + before.bank && !before.squad.some((m) => m.id === p.id) && p.canSelect)
+      .sort((x, y) => y.sel - x.sel)[0];
+    const after = new Analyzer({ ...raw, pending: { gw: new Analyzer(raw).gw, moves: [[out.id, inn.id]] } }).phase1().me!;
+    expect(after.squad.map((m) => m.id)).toContain(inn.id);
+    expect(after.squad.map((m) => m.id)).not.toContain(out.id);
+    expect(after.recorded).toEqual({ outs: [out.id], ins: [inn.id], wildcard: false });
+    expect(after.bank).toBe(before.bank + out.sell - inn.cost);
+    expect(after.ft).toBe(Math.max(0, before.ft - 1));
+    // A stale record (for an older GW) is ignored.
+    const stale = new Analyzer({ ...raw, pending: { gw: 1, moves: [[out.id, inn.id]] } }).phase1().me!;
+    expect(stale.recorded).toBeNull();
+    expect(stale.squad.map((m) => m.id)).toContain(out.id);
+  }, 60000);
+});

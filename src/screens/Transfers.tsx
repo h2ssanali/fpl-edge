@@ -63,7 +63,7 @@ function useDragDrop(onDrop: (item: DragItem, target: HTMLElement) => void) {
 
 export function Transfers() {
   const { t, fmt } = useI18n();
-  const { analysis: a, phase2, request, players } = useStore();
+  const { analysis: a, phase2, request, players, raw, recordMoves } = useStore();
   const pl = usePlayer();
   const me = a?.me;
   const storageKey = `fpl-edge-plan-${me?.entry ?? 'none'}-${a?.gw ?? 0}`;
@@ -142,6 +142,18 @@ export function Transfers() {
     setTransfers((ts) => [...ts.filter((x) => x.gw !== gws[0]), ...moves.map((m) => ({ gw: gws[0], out: m.out, in: m.in }))]);
   };
 
+  // Record this GW's planned moves as already made on the FPL site (they stay private there until the deadline).
+  const nowMoves = transfers.filter((x) => x.gw === gws[0]);
+  const nowWildcard = chips.some((c) => c.gw === gws[0] && c.chip === 'wildcard');
+  const prevMoves = raw?.pending?.gw === a.gw ? raw.pending.moves : [];
+  const record = () => {
+    recordMoves({ gw: a.gw, moves: [...prevMoves, ...nowMoves.map((m) => [m.out, m.in] as [number, number])], wildcard: nowWildcard || !!me.recorded?.wildcard });
+    setTransfers((ts) => ts.filter((x) => x.gw !== gws[0]));
+    setChips((cs) => cs.filter((c) => c.gw !== gws[0]));
+    setGi(0);
+    setToast(t('rec.saved'));
+  };
+
   const runOpt = async () => {
     setOptBusy(true);
     try { setOpt(await request('optimize', { horizon: optH, maxMoves: 3 })); } finally { setOptBusy(false); }
@@ -153,6 +165,27 @@ export function Transfers() {
   return (
     <div>
       <PageHeader title={t('tr.title')} />
+      <section className={`card ${me.recorded ? 'accent' : ''}`} style={{ marginBottom: 14 }}>
+        <div className="display" style={{ fontSize: '1.05rem' }}>{me.recorded ? t('rec.doneTitle', { gw: a.gw }) : t('rec.title')}</div>
+        {me.recorded ? (
+          <>
+            <div className="stack" style={{ gap: 4, marginTop: 6 }}>
+              {me.recorded.outs.map((out, i) => (
+                <div key={out} className="move small">
+                  <IconArrowDown width={14} className="out" /><span className="out"><PName id={out} /></span>
+                  {me.recorded!.ins[i] && <><IconArrowUp width={14} className="in" /><span className="in"><PName id={me.recorded!.ins[i]} withTeam /></span></>}
+                </div>
+              ))}
+            </div>
+            {me.recorded.wildcard && <span className="pill accent" style={{ marginTop: 6 }}>Wildcard</span>}
+            <p className="tiny muted" style={{ margin: '6px 0 8px' }}>{t('rec.doneSub', { ft: me.ft, bank: (me.bank / 10).toFixed(1) })}</p>
+            <button className="btn small ghost bad" onClick={() => recordMoves(null)}>{t('rec.clear')}</button>
+          </>
+        ) : <p className="small muted" style={{ margin: '4px 0 0', lineHeight: 1.7 }}>{t('rec.explain', { gw: a.gw })}</p>}
+        {nowMoves.length > 0 && (
+          <button className="btn primary" style={{ width: '100%', marginTop: 10 }} onClick={record}>{t('rec.button', { n: nowMoves.length })}</button>
+        )}
+      </section>
       <TransferReport />
       <a href="#/more/wildcard" className="card" style={{ display: 'block', textDecoration: 'none', color: 'inherit', marginBottom: 14 }}>
         <div className="row between"><b>{t('wc.ctaTitle')}</b><span className="card-link">{t('wc.cta')}</span></div>

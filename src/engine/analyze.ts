@@ -5,6 +5,7 @@ import { bestXI, freeTransfers, latestPicks, sellingPrices, toMembers, type Squa
 import { optimizeTransfers, hitValue, planKey, type Plan } from './optimizer';
 import { dreamTeam } from './dreamteam';
 import { buildWildcards } from './wildcard';
+import { pendingFt, withPending, type PendingMoves } from './pending';
 import { effectiveOwnership, leagueSquads, rankSwing, simulateLeague, type LeagueSquad, type LeagueSimOutput } from './league';
 import { predictRival, rivalDNA, type RivalDNA, type RivalPrediction } from './rivals';
 import { logitShift, rivalOdds, suggestMode, winFromOdds, type Lineup, type Mode } from './strategy';
@@ -19,6 +20,8 @@ import type { Core, Distribution, Fixture, LeagueFile, LiveFile, ManagerFile, Me
 export interface RawData {
   meta: Meta; core: Core; fixtures: Fixture[]; live: LiveFile[]; managers: ManagerFile[];
   leagues: LeagueFile[]; top: TopSample | null; perGw: PerGwHistory | null; snapshots: Snapshot[];
+  /** Transfers already made on the FPL site for the coming GW (private until the deadline). */
+  pending?: PendingMoves | null;
 }
 
 export interface PlayerSummary {
@@ -56,6 +59,8 @@ export interface Analysis {
   me: null | {
     entry: number; name: string; player: string; total: number; overallRank: number; lastGw: number;
     squad: SquadSlot[]; bank: number; ft: number; teamValue: number;
+    /** Transfers the user recorded in the app for this GW (already applied to squad). */
+    recorded: { outs: number[]; ins: number[]; wildcard: boolean } | null;
     chips: Record<ChipName, [number, number] | null>;
     edge: { xi: number[]; bench: number[]; captain: number; vice: number };
     squadDist: Distribution; lastLineupDist: Distribution | null;
@@ -107,10 +112,17 @@ export class Analyzer {
   myFT = 1;
   analysis: Analysis | null = null;
 
-  constructor(raw: RawData, opts: { leagueId?: number } = {}) {
+  /** The user's squad before any recorded (not yet public) transfers. */
+  private officialSquad: number[] = [];
+
+  constructor(input: RawData, opts: { leagueId?: number } = {}) {
+    const gw = planningGw(input.core);
+    const official = input.meta.teamId ? input.managers.find((m) => m.id === input.meta.teamId) : undefined;
+    this.officialSquad = official ? latestPicks(official)?.picks.picks.map((p) => p[0]) ?? [] : [];
+    const raw = withPending(input, gw);
     this.raw = raw;
     this.data = buildModelData(raw.core, raw.fixtures, raw.live);
-    this.gw = planningGw(raw.core);
+    this.gw = gw;
     this.ctx = buildContext(this.data, this.gw);
     this.horizon = [];
     for (let g = this.gw; g < this.gw + HORIZON && g <= 38; g++) this.horizon.push(g);
@@ -186,7 +198,7 @@ export class Analyzer {
       const sell = sellingPrices(this.me, data.players, ids);
       this.mySquad = toMembers(ids, data.players, sell);
       this.myBank = myLatest.picks.bank ?? this.me.entry.bank ?? 0;
-      this.myFT = freeTransfers(this.me);
+      this.myFT = pendingFt(freeTransfers(this.me), raw, this.gw, this.officialSquad, ids);
       const r = bestXI(this.mySquad, (id) => this.xp(id));
       // Captain choice from the simulation (mean), not just analytic xPts.
       const xiIds = r.xi.map((m) => m.id);
@@ -224,6 +236,11 @@ export class Analyzer {
           return { ...m, position: pk[1], isCap: !!pk[3], isVice: !!pk[4] };
         }),
         bank: this.myBank, ft: this.myFT,
+        recorded: myLatest.gw === this.gw && raw.pending ? {
+          outs: this.officialSquad.filter((id) => !ids.includes(id)),
+          ins: ids.filter((id) => !this.officialSquad.includes(id)),
+          wildcard: !!raw.pending.wildcard,
+        } : null,
         teamValue: this.mySquad.reduce((s, m) => s + m.cost, 0) + this.myBank,
         chips: Object.fromEntries(chipAvailability(this.me, raw.core.chips, this.gw)) as Record<ChipName, [number, number] | null>,
         edge: { xi: xiIds, bench: benchOrdered, captain, vice },

@@ -14,7 +14,7 @@ const POS = ['', 'GKP', 'DEF', 'MID', 'FWD'];
 
 export function Wildcard() {
   const { t, fmt } = useI18n();
-  const { analysis: a, players, request } = useStore();
+  const { analysis: a, players, request, raw, recordMoves } = useStore();
   const pl = usePlayer();
   const [locked, setLocked] = useState<number[]>([]);
   const [excluded, setExcluded] = useState<number[]>([]);
@@ -63,6 +63,18 @@ export function Wildcard() {
     if (o.kind === 'best') return t('wc.whyBest', base);
     if (o.kind === 'differential') return t('wc.whyDiff', { ...base, own: fmt(o.avgOwnership, 0), ownBest: fmt(best?.avgOwnership ?? 0, 0), diff: fmt((best?.value ?? 0) - o.value) });
     return t('wc.whyKeep', { ...base, kept: o.kept.length, diff: fmt((best?.value ?? 0) - o.value) });
+  };
+  // "I made this squad on the FPL site": pair each sale with a purchase in the same position.
+  const adopt = (o: WildcardOption) => {
+    const ins = [...o.ins];
+    const moves: [number, number][] = [];
+    for (const out of o.outs) {
+      const k = ins.findIndex((id) => players.get(id)?.pos === players.get(out)?.pos);
+      if (k >= 0) moves.push([out, ins.splice(k, 1)[0]]);
+    }
+    const prev = raw?.pending?.gw === a.gw ? raw.pending.moves : [];
+    recordMoves({ gw: a.gw, moves: [...prev, ...moves], wildcard: true });
+    window.location.hash = '#/';
   };
   const highlights = opt ? opt.squad.filter((m) => !locked.includes(m.id)).sort((x, y) => xpN(y.id) - xpN(x.id)).slice(0, 4) : [];
   const next3 = (id: number) => {
@@ -151,6 +163,13 @@ export function Wildcard() {
             />
             <p className="tiny muted" style={{ margin: '6px 2px 0' }}>{t('wc.pitchNote', { from, to })}</p>
           </div>
+
+          {opt.outs.length > 0 && (
+            <div className="card" style={{ marginTop: 12 }}>
+              <button className="btn primary" style={{ width: '100%' }} onClick={() => adopt(opt)}>{t('rec.adopt')}</button>
+              <p className="tiny muted" style={{ margin: '6px 2px 0', lineHeight: 1.7 }}>{t('rec.adoptSub')}</p>
+            </div>
+          )}
 
           {(opt.outs.length > 0 || opt.ins.length > 0) && (
             <>

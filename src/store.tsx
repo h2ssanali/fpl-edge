@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Analysis, Phase2, RawData, RivalView } from './engine/analyze';
 import type { Player, Team } from './engine/types';
+import type { PendingMoves } from './engine/pending';
 import { loadAll } from './data/load';
 import { loadLeagueAndHistory, loadMyTeam, setOwnRelay, TeamNotFound } from './data/remote';
 
@@ -15,6 +16,13 @@ function initialTeam(): number | null {
   const id = Number(fromUrl || lsGet('fpl-edge-team') || 0);
   if (fromUrl && id > 0) lsSet('fpl-edge-team', String(id));
   return id > 0 ? id : null;
+}
+
+/** Transfers recorded in the app for the coming GW, per team (FPL hides them until the deadline). */
+const movesKey = (teamId: number) => `arkilo-moves-${teamId}`;
+function readMoves(teamId: number | null | undefined): PendingMoves | null {
+  if (!teamId) return null;
+  try { return JSON.parse(lsGet(movesKey(teamId)) ?? 'null'); } catch { return null; }
 }
 
 interface Store {
@@ -36,6 +44,8 @@ interface Store {
   teamError: 'notFound' | 'network' | null;
   /** Background loading of the mini-league (in-app teams only). */
   rivalsLoading: { done: number; total: number } | null;
+  /** Save the transfers already made on the FPL site (null clears them) and re-run the analysis. */
+  recordMoves: (p: PendingMoves | null) => void;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -85,7 +95,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setOwnRelay(__FPL_RELAY__ || r.meta.relayUrl);
         const teamId = customTeam ?? r.meta.teamId;
         const needRemote = !!teamId && ((!!customTeam && customTeam !== r.meta.teamId) || (!!customLeague && !r.meta.leagueIds.includes(customLeague)));
-        const start = (data: RawData) => { setRaw(data); worker.postMessage({ id: 0, type: 'init', payload: { raw: data } }); };
+        const start = (input: RawData) => {
+          const data = { ...input, pending: readMoves(input.meta.teamId) };
+          setRaw(data); worker.postMessage({ id: 0, type: 'init', payload: { raw: data } });
+        };
         if (!teamId || !needRemote) { setStatus('simulating'); start(r); return; }
 
         // Phase A: the user's own team, fast, then show the analysis straight away.
@@ -134,6 +147,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setPhase2(null);
     setCustomTeam(id);
   }, []);
+  const recordMoves = useCallback((p: PendingMoves | null) => {
+    if (!raw?.meta.teamId) return;
+    lsSet(movesKey(raw.meta.teamId), p && p.moves.length ? JSON.stringify(p) : null);
+    const data = { ...raw, pending: p && p.moves.length ? p : null };
+    setRaw(data);
+    setPhase2(null);
+    workerRef.current?.postMessage({ id: 0, type: 'init', payload: { raw: data } });
+  }, [raw]);
   const setLeague = useCallback((id: number | null) => {
     lsSet('fpl-edge-league', id ? String(id) : null);
     setPhase2(null);
@@ -142,7 +163,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value: Store = {
     status, progress, error, raw, analysis, phase2, players, teams, request, reload: () => setNonce((n) => n + 1),
-    customTeam, customLeague, setTeam, setLeague, teamError, rivalsLoading,
+    customTeam, customLeague, setTeam, setLeague, teamError, rivalsLoading, recordMoves,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
