@@ -1,0 +1,30 @@
+name: probe-transfers
+on:
+  push:
+    branches: [claude/adoring-einstein-17yki4]
+    paths: [.github/workflows/probe-transfers.yml]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python3 {0}
+        run: |
+          import json, urllib.request, time
+          H = {'User-Agent': 'Mozilla/5.0'}
+          def get(p):
+            return json.load(urllib.request.urlopen(urllib.request.Request('https://fantasy.premierleague.com/api' + p, headers=H), timeout=30))
+          boot = get('/bootstrap-static/')
+          nxt = next(e for e in boot['events'] if e['is_next'])
+          print('next gw', nxt['id'], 'deadline', nxt['deadline_time'], 'transfers_made', nxt.get('transfers_made'))
+          top = get('/leagues-classic/314/standings/')['standings']['results'][:40]
+          seen = 0
+          for r in top:
+            e = r['entry']
+            tr = get(f'/entry/{e}/transfers/')
+            ev = [t for t in tr if t['event'] == nxt['id']]
+            ent = get(f'/entry/{e}/')
+            if ev: seen += 1
+            print(e, 'next-gw transfers', len(ev), 'latest', tr[0]['event'] if tr else None, tr[0]['time'] if tr else None, '| entry.current_event', ent.get('current_event'), 'last_deadline_total_transfers', ent.get('last_deadline_total_transfers'))
+            time.sleep(0.3)
+          print('managers with visible next-gw transfers:', seen, '/', len(top))
+          print('entry keys', sorted(ent.keys()))
