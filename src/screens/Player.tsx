@@ -116,6 +116,11 @@ export function Player() {
         {p.pos === 1 && <span className="fact">{t('pp.saves')} <b>{p.saves}</b></span>}
         <span className="fact">{t('pp.bonus')} <b>{p.bonus}</b></span>
         <span className="fact">xG+xA / 90 <b>{fmt(per90(p.xg + p.xa), 2)}</b></span>
+        {p.mins >= 360 && p.pos > 1 && Math.abs(p.g + p.a - p.xg - p.xa) >= 1.5 && (
+          <a className={`fact ${p.g + p.a < p.xg + p.xa ? 'good' : 'warn'}`} href="#/more/luck" style={{ textDecoration: 'none' }}>
+            {t(p.g + p.a < p.xg + p.xa ? 'lk.factDue' : 'lk.factHot', { d: fmt(Math.abs(p.g + p.a - p.xg - p.xa)) })}
+          </a>
+        )}
         {s && <span className="fact">{t('cap.fStart')} <b>{pct(s.pStart)}</b></span>}
       </div>
 

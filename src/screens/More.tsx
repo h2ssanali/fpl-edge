@@ -14,12 +14,14 @@ const GROUPS: { title: string; items: Item[] }[] = [
   { title: 'before', items: [
     { id: 'captain', icon: IconArmband, href: '#/captain' },
     { id: 'transfers', icon: IconTransfer, href: '#/transfers' },
+    { id: 'hits', icon: IconTransfer, isNew: true },
     { id: 'wildcard', icon: IconStar },
     { id: 'chips', icon: IconChip },
     { id: 'deadline', icon: IconClock },
   ] },
   { title: 'discover', items: [
     { id: 'compare', icon: IconBall, href: '#/compare', isNew: true },
+    { id: 'luck', icon: IconDiamond, isNew: true },
     { id: 'defcon', icon: IconShield, isNew: true },
     { id: 'setpieces', icon: IconBall, isNew: true },
     { id: 'differentials', icon: IconDiamond, key: 'diffs' },

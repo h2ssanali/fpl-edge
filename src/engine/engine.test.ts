@@ -392,3 +392,26 @@ describe('live scoring', () => {
     expect(team.left).toBe(5);
   });
 });
+
+describe('hit calculator', () => {
+  it('counts lineup-aware gains against the cost of hits', async () => {
+    const { hitPlan } = await import('./hits');
+    const P = (id: number, pos: number, team: number, cost = 50) => [id, { id, pos, team, cost } as never] as const;
+    // 2 GK, 5 DEF, 5 MID, 3 FWD on different teams; player 99 is a MID who scores 6 a week.
+    const ids = [[1, 1], [2, 1], [3, 2], [4, 2], [5, 2], [6, 2], [7, 2], [8, 3], [9, 3], [10, 3], [11, 3], [12, 3], [13, 4], [14, 4], [15, 4]];
+    const players = new Map([...ids.map(([id, pos]) => P(id, pos, id)), P(99, 3, 20, 60)]);
+    const squad = ids.map(([id, pos]) => ({ id, pos: pos as never, team: id, cost: 50, sell: 50 }));
+    const xp = (id: number) => (id === 99 ? 6 : id === 12 ? 1 : 3);
+    const r = hitPlan({ squad, bank: 10, ft: 0, moves: [[12, 99]], players, xp, gws: 6 });
+    expect(r.problems).toEqual([]);
+    expect(r.cost).toBe(4);
+    expect(r.bankAfter).toBe(0);
+    // MID 12 (1 pt) sat on the bench; the new MID starts (6 for a 3-pointer) and is captain (+6 for +3): +6 a week.
+    expect(r.perGw[0].gain).toBeCloseTo(6);
+    expect(r.payback).toBe(0);
+    expect(r.waitLoss).toBeCloseTo(6);
+    const broke = hitPlan({ squad, bank: 0, ft: 1, moves: [[12, 99]], players, xp, gws: 3 });
+    expect(broke.problems).toContain('budget');
+    expect(broke.cost).toBe(0);
+  });
+});
