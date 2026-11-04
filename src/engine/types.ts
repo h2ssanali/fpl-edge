@@ -51,6 +51,8 @@ export interface Chip { id: number; name: string; number: number; start: number;
 export interface Core {
   updated: string; season: string; currentGw: number; nextGw: number | null; lastFinished: number;
   totalPlayers: number; rules: Rules; chips: Chip[]; events: GwEvent[]; teams: Team[]; players: Player[];
+  /** Official set-piece notes per club (may be missing in older data). */
+  setPieceNotes?: { team: number; notes: string[]; updated: string | null }[];
 }
 
 export interface Fixture {

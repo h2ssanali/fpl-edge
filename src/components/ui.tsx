@@ -63,10 +63,19 @@ export function usePlayer() {
   };
 }
 
-/** Player name kept in English (LTR) inside Arabic text. */
-export function PName({ id, withTeam = false }: { id: number; withTeam?: boolean }) {
+/** Open a player's page. */
+export const openPlayer = (id: number) => { window.location.hash = `#/player/${id}`; };
+
+/** Player name kept in English (LTR) inside Arabic text; tapping it opens the player's page. */
+export function PName({ id, withTeam = false, link = true }: { id: number; withTeam?: boolean; link?: boolean }) {
   const pl = usePlayer();
-  return <bdi dir="ltr">{pl.name(id)}{withTeam && <span className="faint"> · {pl.team(id)}</span>}</bdi>;
+  const name = <>{pl.name(id)}{withTeam && <span className="faint"> · {pl.team(id)}</span>}</>;
+  if (!link) return <bdi dir="ltr">{name}</bdi>;
+  return (
+    <bdi dir="ltr" className="plink" role="link" tabIndex={0}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); openPlayer(id); }}
+      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); openPlayer(id); } }}>{name}</bdi>
+  );
 }
 
 export function MiniShirt({ id }: { id: number }) {

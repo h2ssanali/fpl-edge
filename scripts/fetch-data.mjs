@@ -316,6 +316,8 @@ async function main() {
 
   const boot = await get('/bootstrap-static/');
   const fixturesRaw = await get('/fixtures/');
+  // Official set-piece notes per club (penalty/free-kick/corner takers); optional.
+  const notesRaw = await get('/team/set-piece-notes/', { optional: true });
   const events = boot.events.map(compactEvent);
   const current = events.find((e) => e.current) || null;
   const next = events.find((e) => e.next) || null;
@@ -352,6 +354,10 @@ async function main() {
       strengthHome: t.strength_overall_home, strengthAway: t.strength_overall_away, position: t.position,
       played: t.played, win: t.win, draw: t.draw, loss: t.loss, points: t.points })),
     players,
+    setPieceNotes: (notesRaw?.teams || []).map((t) => ({
+      team: t.id, notes: (t.notes || []).map((n) => n.info_message).filter(Boolean),
+      updated: t.last_updated || null,
+    })).filter((t) => t.notes.length),
   };
 
   const fixtures = fixturesRaw.map((f) => ({

@@ -25,6 +25,10 @@ import { Settings } from './screens/Settings';
 import { Method } from './screens/Method';
 import { Wildcard } from './screens/Wildcard';
 import { Defcon } from './screens/Defcon';
+import { Live } from './screens/Live';
+import { Player } from './screens/Player';
+import { Compare } from './screens/Compare';
+import { SetPieces } from './screens/SetPieces';
 
 
 function useRoute() {
@@ -39,10 +43,10 @@ function useRoute() {
 }
 
 const SCREENS: Record<string, ComponentType> = {
-  home: Home, captain: Captain, transfers: Transfers, league: League, more: More,
+  home: Home, captain: Captain, transfers: Transfers, league: League, more: More, live: Live, compare: Compare,
   'more/prices': Prices, 'more/differentials': Differentials, 'more/fixtures': Fixtures, 'more/chips': Chips,
   'more/dream': Dream, 'more/injuries': Injuries, 'more/report': Report, 'more/hindsight': Hindsight,
-  'more/journal': Journal, 'more/chaos': Chaos, 'more/story': Story, 'more/deadline': Deadline, 'more/settings': Settings, 'more/method': Method, 'more/wildcard': Wildcard, 'more/defcon': Defcon,
+  'more/journal': Journal, 'more/chaos': Chaos, 'more/story': Story, 'more/deadline': Deadline, 'more/settings': Settings, 'more/method': Method, 'more/wildcard': Wildcard, 'more/defcon': Defcon, 'more/setpieces': SetPieces,
 };
 
 /** Welcome card: ask for a team ID until the visitor has entered one. */
@@ -82,8 +86,9 @@ export function App() {
     window.addEventListener('fpl-theme', on);
     return () => window.removeEventListener('fpl-theme', on);
   }, []);
-  const Screen = SCREENS[route] ?? Home;
-  const tab = route.split('/')[0];
+  const path = route.split('?')[0];
+  const Screen = path.startsWith('player/') ? Player : SCREENS[path] ?? Home;
+  const tab = path.split('/')[0];
   const tabs = [
     { id: 'home', icon: IconHome, label: t('tab.home') },
     { id: 'captain', icon: IconArmband, label: t('tab.captain') },

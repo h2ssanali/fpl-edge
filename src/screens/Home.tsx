@@ -4,6 +4,8 @@ import { Countdown, Empty, MiniShirt, PName, Reasons, usePlayer } from '../compo
 import { CountUp, DistChart } from '../components/viz';
 import { IconArrowDown, IconArrowUp, IconClock, IconPhone } from '../components/icons';
 import { RankCard } from '../components/MyRank';
+import { PlayerSearch } from '../components/PlayerSearch';
+import { liveGw } from '../data/live';
 import { WhatIf } from '../components/WhatIf';
 
 export function Home() {
@@ -18,6 +20,9 @@ export function Home() {
   const alts = (me?.captains ?? []).filter((c) => c.id !== cap?.id).sort((x, y) => y.capDist.mean - x.capDist.mean).slice(0, 2);
   const fxText = (id: number) => (a.players[id]?.fx ?? []).map((f) => `${pl.teamShort(f.opp)} (${t(f.home ? 'H' : 'A')})`).join(' + ') || t('r.blank');
   const updated = new Date(raw.meta.updated);
+  // A gameweek is under way: its deadline passed and FPL hasn't finalised it yet.
+  const lg = liveGw(raw.core.events);
+  const live = lg && !lg.dataChecked ? lg : null;
   return (
     <div className="stack">
       <section className="scoreboard" aria-label={t('deadline')}>
@@ -33,6 +38,18 @@ export function Home() {
           </div>
         )}
       </section>
+
+      <PlayerSearch />
+
+      {live && (
+        <a href="#/live" className="card accent" style={{ textDecoration: 'none', color: 'inherit', padding: '12px 14px' }}>
+          <div className="row between">
+            <b><span className="live-dot" />{t('lv.homeTitle', { gw: live.id })}</b>
+            <span className="card-link">{t('lv.homeCta')}</span>
+          </div>
+          <div className="small muted">{t('lv.homeSub')}</div>
+        </a>
+      )}
 
       {me?.recorded ? (
         <a href="#/transfers" className="card accent" style={{ textDecoration: 'none', color: 'inherit', padding: '10px 14px' }}>

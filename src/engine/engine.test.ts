@@ -354,3 +354,41 @@ describe('plain player names', () => {
     expect(searchKey('A.García')).toBe('agarcia');
   });
 });
+
+describe('live scoring', () => {
+  it('provisional bonus, auto-subs and vice-captain', async () => {
+    const { provisionalBonus, liveTeam } = await import('./live');
+    // Fixture 1 (team 1 v 2) is over; fixture 2 (team 3 v 4) hasn't started.
+    const fixtures = [
+      { id: 1, h: 1, a: 2, hs: 2, as: 0, started: true, done: true, minutes: 90, kickoff: null },
+      { id: 2, h: 3, a: 4, hs: null, as: null, started: false, done: false, minutes: 0, kickoff: null },
+    ];
+    const el = (id: number, minutes: number, points: number, bps: number) => [id, { id, minutes, points, bonus: 0, bps: new Map(minutes ? [[1, bps]] : []) }] as const;
+    const els = new Map([el(1, 90, 2, 20), el(2, 0, 0, 0), el(3, 90, 8, 40), el(4, 90, 6, 40), el(5, 90, 2, 30), el(6, 90, 1, 10), el(12, 90, 2, 25), el(13, 90, 3, 5)]);
+    // Ties: two players on 40 BPS both get 3, the next gets 1.
+    const bonus = provisionalBonus(els, fixtures);
+    expect(bonus.get(3)).toBe(3);
+    expect(bonus.get(4)).toBe(3);
+    expect(bonus.get(5)).toBe(1);
+    expect(bonus.has(12)).toBe(false);
+
+    const P = (id: number, pos: number, team: number) => [id, { id, pos, team } as never] as const;
+    // XI: GK 1, DEF 2,3,4, MID 5,6,7,8, FWD 9,10,11 (7–11 on team 3, yet to play). Bench: GK 12, DEF 13, MID 14, FWD 15.
+    const players = new Map([P(1, 1, 1), P(2, 2, 2), P(3, 2, 1), P(4, 2, 2), P(5, 3, 1), P(6, 3, 2), P(7, 3, 3), P(8, 3, 3), P(9, 4, 3), P(10, 4, 3), P(11, 4, 3), P(12, 1, 1), P(13, 2, 1), P(14, 3, 3), P(15, 4, 3)]);
+    const picks = {
+      active_chip: null, entry_history: { points: 0, total_points: 0, event_transfers_cost: 4, overall_rank: null },
+      picks: Array.from({ length: 15 }, (_, i) => ({ element: i + 1, position: i + 1, multiplier: i === 1 ? 2 : i < 11 ? 1 : 0, is_captain: i === 1, is_vice_captain: i === 2 })),
+    };
+    const team = liveTeam(picks, els, fixtures, players, bonus);
+    const row = (id: number) => team.rows.find((r) => r.id === id)!;
+    // Captain (2) didn't play and his match is over: DEF 13 comes on, vice (3) is doubled.
+    expect(row(2).subOut).toBe(true);
+    expect(row(13).subIn).toBe(true);
+    expect(row(3).mult).toBe(2);
+    expect(row(2).mult).toBe(0);
+    // 1:2 + 3:(8+3)*2 + 4:(6+3) + 5:(2+1) + 6:1 + 13:3 = 40, minus a 4-point hit.
+    expect(team.points).toBe(40);
+    expect(team.net).toBe(36);
+    expect(team.left).toBe(5);
+  });
+});

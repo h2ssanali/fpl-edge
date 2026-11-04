@@ -418,3 +418,12 @@ table.data tr.me td { background: var(--accent-soft); }
 .facts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .fact { background: var(--surface-2); border-radius: 10px; padding: 4px 10px; font-size: .82rem; }
 .fact b { font-family: var(--font-num); }
+
+/* Tappable player names open the player page */
+.plink { cursor: pointer; text-decoration: underline dotted color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: 3px; }
+.plink:hover { color: var(--accent); }
+
+/* Player search dropdown */
+.search-pop { position: absolute; inset-inline: 0; top: calc(100% + 6px); z-index: 30; padding: 4px 10px; max-height: 60vh; overflow-y: auto; box-shadow: 0 12px 32px rgba(0, 0, 0, .45); background: var(--surface-solid); }
+.search-row { width: 100%; background: none; border: 0; color: inherit; cursor: pointer; font: inherit; }
+.search-row:hover { background: var(--surface-2); }

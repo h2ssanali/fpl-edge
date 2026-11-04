@@ -297,7 +297,7 @@ export function Transfers() {
               <MiniShirt id={p.id} />
               <button className="grow" style={{ background: 'none', border: 0, textAlign: 'start', padding: 0, cursor: selectedOut ? 'pointer' : 'default', minWidth: 0 }}
                 onClick={() => selectedOut && addTransfer(selectedOut, p.id)}>
-                <div className="name"><PName id={p.id} /></div>
+                <div className="name"><PName id={p.id} link={false} /></div>
                 <div className="sub">{pl.team(p.id)} · <Money v={p.cost} /> · {fmt(p.sel, 1)}%</div>
               </button>
               <div style={{ textAlign: 'end' }}>
