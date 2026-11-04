@@ -108,3 +108,25 @@ describe.skipIf(!has)('recorded (not yet public) transfers', () => {
     expect(stale.squad.map((m) => m.id)).toContain(out.id);
   }, 60000);
 });
+
+describe.skipIf(!has)('DEFCON table', () => {
+  it('ranks players by defensive contribution points', () => {
+    const meta = read('meta.json');
+    const raw: RawData = {
+      meta, core: read('core.json'), fixtures: read('fixtures.json'),
+      live: meta.liveGws.map((g: number) => read(`live/${g}.json`)),
+      managers: [], leagues: [], top: null, perGw: null, snapshots: [],
+    };
+    const a = new Analyzer(raw).phase1();
+    const defs = a.defcon.filter((r) => r.pos === 2);
+    expect(defs.length).toBeGreaterThan(20);
+    for (const r of a.defcon) {
+      expect(r.rate).toBeGreaterThanOrEqual(0);
+      expect(r.rate).toBeLessThanOrEqual(1);
+      expect(r.pts).toBe(r.hits * 2);
+      expect(r.last.length).toBeLessThanOrEqual(6);
+    }
+    const name = (id: number) => raw.core.players.find((p) => p.id === id)!.web;
+    console.log('top DEFCON defenders', defs.slice(0, 5).map((r) => `${name(r.id)} ${r.hits}/${r.full} ${r.per90.toFixed(1)}/90 next6 ${r.xPts6.toFixed(1)}`));
+  }, 60000);
+});

@@ -54,6 +54,9 @@ export const IconChip = (p: SVGProps<SVGSVGElement>) => (
 export const IconStar = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}><path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 17l-5.2 2.7 1-5.9-4.3-4.1 5.9-.8L12 3.5Z" /></svg>
 );
+export const IconShield = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}><path d="M12 3.5 19 6v5.5c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6l7-2.5Z" /><path d="m9 12 2 2 4-4" /></svg>
+);
 export const IconCross = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}><rect x="3.5" y="3.5" width="17" height="17" rx="4" /><path d="M12 8v8M8 12h8" /></svg>
 );

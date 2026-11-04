@@ -1,8 +1,9 @@
 import { useI18n } from '../i18n';
 import { PageHeader } from '../components/ui';
-import { IconAlert, IconBook, IconCalendar, IconChip, IconClock, IconCross, IconDiamond, IconGear, IconPhone, IconReport, IconRewind, IconStar, IconStorm, IconTag } from '../components/icons';
+import { IconAlert, IconBook, IconCalendar, IconChip, IconClock, IconCross, IconDiamond, IconGear, IconPhone, IconReport, IconRewind, IconShield, IconStar, IconStorm, IconTag } from '../components/icons';
 
 const ITEMS = [
+  { id: 'defcon', icon: IconShield, isNew: true },
   { id: 'wildcard', icon: IconStar, isNew: true },
   { id: 'hindsight', icon: IconRewind, isNew: true },
   { id: 'journal', icon: IconBook, isNew: true },

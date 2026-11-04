@@ -5,6 +5,7 @@ import { bestXI, freeTransfers, latestPicks, sellingPrices, toMembers, type Squa
 import { optimizeTransfers, hitValue, planKey, type Plan } from './optimizer';
 import { dreamTeam } from './dreamteam';
 import { buildWildcards } from './wildcard';
+import { defconTable, type DefconRow } from './defcon';
 import { pendingFt, withPending, type PendingMoves } from './pending';
 import { effectiveOwnership, leagueSquads, rankSwing, simulateLeague, type LeagueSquad, type LeagueSimOutput } from './league';
 import { predictRival, rivalDNA, type RivalDNA, type RivalPrediction } from './rivals';
@@ -54,6 +55,7 @@ export interface Analysis {
   grid: Record<number, FixtureCell[][]>; // team -> per horizon GW -> fixtures (0 = blank, 2 = double)
   chaos: ChaosResult[];
   prices: PriceSignal[];
+  defcon: DefconRow[];
   differentials: Differential[];
   injuries: { id: number; status: string; cop: number | null; news: string; newsAdded: string | null; pStart: number; rotation: boolean; mine: boolean; leagueEo: number }[];
   me: null | {
@@ -338,7 +340,7 @@ export class Analyzer {
       generatedAt: new Date().toISOString(), gw: this.gw, horizon: this.horizon, deadline: nextEv?.deadline ?? null,
       players, dists,
       teams: [...this.ctx.teams.ratings.values()].map((r) => ({ id: r.id, attack: r.attack, defence: r.defence, xgFor: r.xgFor, xgAgainst: r.xgAgainst, trendXga: r.trendXga })),
-      grid, chaos, prices, differentials: diffs, injuries, me, league,
+      grid, chaos, prices, defcon: defconTable(data, this.horizon, this.proj).slice(0, 150), differentials: diffs, injuries, me, league,
     };
     return this.analysis;
   }
