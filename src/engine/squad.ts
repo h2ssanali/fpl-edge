@@ -105,8 +105,9 @@ export function freeTransfers(manager: ManagerFile, maxBank = 5): number {
   for (const h of hist) {
     if (h.gw === manager.entry.startedEvent) { ft = 1; continue; }
     const chip = chipsByGw.get(h.gw);
-    if (chip === 'wildcard' || chip === 'freehit') { ft = Math.min(maxBank, ft + 0); }
-    else ft = Math.max(0, ft - h.tr);
+    // A Wildcard / Free Hit keeps banked FTs but uses up that week's new one (no +1).
+    if (chip === 'wildcard' || chip === 'freehit') continue;
+    ft = Math.max(0, ft - h.tr);
     ft = Math.min(maxBank, ft + 1);
   }
   return Math.max(1, ft);

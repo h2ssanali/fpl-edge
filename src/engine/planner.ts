@@ -67,8 +67,8 @@ export function runPlan(params: {
       valid: problems.length === 0, problems, chip,
     });
     if (unlimited) {
-      // FTs are kept through a Wildcard / Free Hit, then +1 next week.
-      ft = Math.min(maxFT, ft + 1);
+      // A Wildcard / Free Hit keeps banked FTs but uses up that week's new one.
+      ft = Math.min(maxFT, ft);
     } else {
       ft = Math.min(maxFT, Math.max(0, ft - moves.length) + 1);
     }
