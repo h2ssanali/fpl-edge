@@ -4,6 +4,7 @@ import { Countdown, Empty, MiniShirt, PName, Reasons, usePlayer } from '../compo
 import { CountUp, DistChart } from '../components/viz';
 import { IconArrowDown, IconArrowUp, IconClock, IconPhone } from '../components/icons';
 import { RankCard } from '../components/MyRank';
+import { freePlans } from '../engine/optimizer';
 import { PlayerSearch } from '../components/PlayerSearch';
 import { liveGw } from '../data/live';
 import { WhatIf } from '../components/WhatIf';
@@ -15,7 +16,7 @@ export function Home() {
   if (!a || !raw) return null;
   const me = a.me;
   const cap = me?.captains.find((c) => c.id === me.edge.captain) ?? me?.captains[0];
-  const topPlan = phase2?.plans[0]?.[0];
+  const topPlan = phase2 && me ? freePlans(phase2.plans, me.ft)[0] : undefined;
   // The next two captain options (by expected points), so the choice is visible at a glance.
   const alts = (me?.captains ?? []).filter((c) => c.id !== cap?.id).sort((x, y) => y.capDist.mean - x.capDist.mean).slice(0, 2);
   const fxText = (id: number) => (a.players[id]?.fx ?? []).map((f) => `${pl.teamShort(f.opp)} (${t(f.home ? 'H' : 'A')})`).join(' + ') || t('r.blank');

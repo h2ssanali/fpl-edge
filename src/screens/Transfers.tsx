@@ -8,7 +8,7 @@ import { TransferReport } from '../components/TransferReport';
 import { CountUp } from '../components/viz';
 import { IconArrowDown, IconArrowUp } from '../components/icons';
 import { runPlan, type PlannedTransfer, type PlanChip } from '../engine/planner';
-import type { Plan } from '../engine/optimizer';
+import { freePlans, type Plan } from '../engine/optimizer';
 import type { Pos } from '../engine/types';
 
 type DragItem = { kind: 'player'; id: number } | { kind: 'transfer'; index: number };
@@ -136,7 +136,7 @@ export function Transfers() {
     .filter((p) => !outMember || q || (p.cost <= budgetFor && teamCount(p.team) < 3))
     .sort((x, y) => remainingXp(y.id) - remainingXp(x.id))
     .slice(0, 20);
-  const suggestions = (phase2?.plans[0] ?? []).filter((p) => p.gain > 0.5).slice(0, 4);
+  const suggestions = freePlans(phase2?.plans ?? [], me.ft).filter((p) => p.gain > 0.5).slice(0, 4);
   const applyMoves = (moves: { out: number; in: number }[]) => {
     setGi(0);
     setTransfers((ts) => [...ts.filter((x) => x.gw !== gws[0]), ...moves.map((m) => ({ gw: gws[0], out: m.out, in: m.in }))]);
@@ -202,10 +202,12 @@ export function Transfers() {
               return (
                 <div key={i} className="list-row" style={{ alignItems: 'flex-start' }}>
                   <div className="grow" style={{ minWidth: 0 }}>
-                    <div className="move" style={{ fontSize: '1rem' }}>
-                      <IconArrowDown width={16} className="out" /><span className="out"><PName id={m.out} /></span>
-                      <IconArrowUp width={16} className="in" /><span className="in"><PName id={m.in} withTeam /></span>
-                    </div>
+                    {pln.moves.map((mv) => (
+                      <div key={mv.out} className="move" style={{ fontSize: '1rem' }}>
+                        <IconArrowDown width={16} className="out" /><span className="out"><PName id={mv.out} /></span>
+                        <IconArrowUp width={16} className="in" /><span className="in"><PName id={mv.in} withTeam /></span>
+                      </div>
+                    ))}
                     <div className="tiny muted">{t('tr.bankAfter')}: <Money v={pln.bankAfter} /></div>
                     {i === 0 && a.players[m.in] && <Reasons reasons={a.players[m.in].reasons} max={4} />}
                   </div>

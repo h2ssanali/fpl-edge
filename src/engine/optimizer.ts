@@ -159,3 +159,16 @@ export function hitValue(best: Plan[][], freeTransfers: number): { extraMove: nu
   const extra = withHit.gain - baseGain;
   return { extraMove: k + 1, gainVsFree: extra, worthIt: extra > 4 };
 }
+
+/**
+ * Plans for the transfers you can make for free: the best of 1..ft moves, taking an
+ * extra move only when it adds at least a point over the horizon.
+ */
+export function freePlans(plans: Plan[][], ft: number): Plan[] {
+  let best = plans[0] ?? [];
+  for (let k = 2; k <= Math.min(Math.max(1, ft), plans.length); k++) {
+    const cand = (plans[k - 1] ?? []).filter((p) => p.hitCost === 0);
+    if (cand[0] && best[0] && cand[0].net >= best[0].net + 1) best = cand;
+  }
+  return best;
+}
